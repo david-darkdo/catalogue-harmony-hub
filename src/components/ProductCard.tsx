@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { ProductRow } from "@/lib/catalog";
-import { Bookmark } from "lucide-react";
+import { AddToCollectionButton } from "./AddToCollectionButton";
 
 export function ProductCard({ product }: { product: ProductRow }) {
   const img =
@@ -36,13 +36,7 @@ export function ProductCard({ product }: { product: ProductRow }) {
           <span className="ml-1 text-xs font-normal text-muted-foreground">/sqm</span>
         </p>
         <div className="mt-auto flex gap-2 pt-2">
-          <button
-            type="button"
-            className="flex flex-1 items-center justify-center gap-1 rounded-md border border-border bg-surface-2 px-2 py-1.5 text-[11px] font-medium text-foreground transition hover:border-primary hover:text-primary"
-          >
-            <Bookmark className="h-3.5 w-3.5" />
-            Add to Collection
-          </button>
+          <AddToCollectionButton productId={product.id} compact />
           <Link
             to="/product/$slug"
             params={{ slug: product.slug }}

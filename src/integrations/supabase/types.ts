@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          company_address: string | null
+          company_email: string | null
+          created_at: string
+          facebook_url: string | null
+          id: string
+          instagram_url: string | null
+          map_url: string | null
+          sales_whatsapp: string | null
+          support_whatsapp: string | null
+          tiktok_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_address?: string | null
+          company_email?: string | null
+          created_at?: string
+          facebook_url?: string | null
+          id?: string
+          instagram_url?: string | null
+          map_url?: string | null
+          sales_whatsapp?: string | null
+          support_whatsapp?: string | null
+          tiktok_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_address?: string | null
+          company_email?: string | null
+          created_at?: string
+          facebook_url?: string | null
+          id?: string
+          instagram_url?: string | null
+          map_url?: string | null
+          sales_whatsapp?: string | null
+          support_whatsapp?: string | null
+          tiktok_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string
