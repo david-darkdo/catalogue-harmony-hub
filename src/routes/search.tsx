@@ -26,7 +26,7 @@ function validateSearch(s: Record<string, unknown>): SearchParams {
 }
 
 export const Route = createFileRoute("/search")({
-  validateSearch: zodValidator(schema),
+  validateSearch: validateSearch,
   head: () => ({
     meta: [
       { title: "Search — Stoneworks" },
