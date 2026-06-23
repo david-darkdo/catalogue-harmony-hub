@@ -95,7 +95,7 @@ function AdminPage() {
     setSavingSettings(true);
     const { error } = await supabase
       .from("app_settings")
-      .update(form)
+      .update(form as never)
       .eq("id", settings.id);
     setSavingSettings(false);
     if (error) {
