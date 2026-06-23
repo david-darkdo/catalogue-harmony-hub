@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useAppSettings, waLink } from "@/lib/settings";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Facebook, Instagram, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 
