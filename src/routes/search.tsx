@@ -9,9 +9,9 @@ import { Search as SearchIcon } from "lucide-react";
 
 const schema = z.object({
   q: fallback(z.string(), "").default(""),
-  type: fallback(z.string().optional(), undefined),
-  category: fallback(z.string().optional(), undefined),
-  subcategory: fallback(z.string().optional(), undefined),
+  type: z.string().optional(),
+  category: z.string().optional(),
+  subcategory: z.string().optional(),
 });
 
 export const Route = createFileRoute("/search")({

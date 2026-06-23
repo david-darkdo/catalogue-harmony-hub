@@ -7,9 +7,9 @@ import { ProductCard } from "@/components/ProductCard";
 import { fetchFeedProducts, fetchTaxonomy, type FeedFilters } from "@/lib/catalog";
 
 const searchSchema = z.object({
-  type: fallback(z.string().optional(), undefined),
-  category: fallback(z.string().optional(), undefined),
-  subcategory: fallback(z.string().optional(), undefined),
+  type: z.string().optional(),
+  category: z.string().optional(),
+  subcategory: z.string().optional(),
 });
 
 const taxonomyQuery = queryOptions({
