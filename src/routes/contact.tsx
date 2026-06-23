@@ -25,29 +25,12 @@ function ContactPage() {
     e.preventDefault();
     setBusy(true);
     try {
-      // Stub collection id is not required — but RLS requires non-null collection_id.
-      // Create a one-off "inquiry collection" for the lead.
-      const { data: col, error: e1 } = await supabase
-        .from("collections")
-        .insert({ user_id: "00000000-0000-0000-0000-000000000000", name: `Inquiry from ${name}` })
-        .select("id")
-        .maybeSingle();
-      // If RLS blocks anon insert into collections, fall back to direct contact.
-      if (e1 || !col) {
-        const msg = `Hi! My name is ${name}. Please reach me at ${phone}.`;
-        window.open(waLink(s?.sales_whatsapp, msg), "_blank", "noopener,noreferrer");
-        return;
-      }
-      await supabase.from("whatsapp_inquiries").insert({
-        collection_id: col.id,
-        customer_name: name,
-        customer_phone: phone,
-        status: "new",
-      });
-      toast.success("Thanks — we'll be in touch shortly");
+      const msg = `Hi! My name is ${name}. Please reach me at ${phone}.`;
+      window.open(waLink(s?.sales_whatsapp, msg), "_blank", "noopener,noreferrer");
+      toast.success("Opening WhatsApp…");
       setName(""); setPhone("");
-    } catch (err) {
-      toast.error("Couldn't submit — please WhatsApp us directly");
+    } catch {
+      toast.error("Couldn't open WhatsApp");
     } finally {
       setBusy(false);
     }
