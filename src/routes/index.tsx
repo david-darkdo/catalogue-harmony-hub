@@ -1,16 +1,22 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery, queryOptions } from "@tanstack/react-query";
-import { z } from "zod";
-import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/AppShell";
 import { ProductCard } from "@/components/ProductCard";
 import { fetchFeedProducts, fetchTaxonomy, type FeedFilters } from "@/lib/catalog";
 
-const searchSchema = z.object({
-  type: z.string().optional(),
-  category: z.string().optional(),
-  subcategory: z.string().optional(),
-});
+type FeedSearch = {
+  type?: string;
+  category?: string;
+  subcategory?: string;
+};
+
+function validateFeedSearch(s: Record<string, unknown>): FeedSearch {
+  const pick = (k: string) => {
+    const v = s[k];
+    return typeof v === "string" && v.length > 0 ? v : undefined;
+  };
+  return { type: pick("type"), category: pick("category"), subcategory: pick("subcategory") };
+}
 
 const taxonomyQuery = queryOptions({
   queryKey: ["taxonomy"],
