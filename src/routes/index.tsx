@@ -31,7 +31,7 @@ const feedQuery = (f: FeedFilters) =>
   });
 
 export const Route = createFileRoute("/")({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: validateFeedSearch,
   loaderDeps: ({ search }) => search,
   loader: ({ context, deps }) => {
     context.queryClient.ensureQueryData(taxonomyQuery);

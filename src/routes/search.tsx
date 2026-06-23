@@ -1,18 +1,29 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, queryOptions } from "@tanstack/react-query";
-import { z } from "zod";
-import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { AppShell } from "@/components/AppShell";
 import { ProductCard } from "@/components/ProductCard";
 import { fetchFeedProducts } from "@/lib/catalog";
 import { Search as SearchIcon } from "lucide-react";
 
-const schema = z.object({
-  q: fallback(z.string(), "").default(""),
-  type: z.string().optional(),
-  category: z.string().optional(),
-  subcategory: z.string().optional(),
-});
+type SearchParams = {
+  q: string;
+  type?: string;
+  category?: string;
+  subcategory?: string;
+};
+
+function validateSearch(s: Record<string, unknown>): SearchParams {
+  const pick = (k: string) => {
+    const v = s[k];
+    return typeof v === "string" && v.length > 0 ? v : undefined;
+  };
+  return {
+    q: typeof s.q === "string" ? s.q : "",
+    type: pick("type"),
+    category: pick("category"),
+    subcategory: pick("subcategory"),
+  };
+}
 
 export const Route = createFileRoute("/search")({
   validateSearch: zodValidator(schema),
