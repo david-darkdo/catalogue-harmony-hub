@@ -3,7 +3,8 @@ import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
 import { ProductCard } from "@/components/ProductCard";
 import { fetchProductBySlug, fetchRelatedProducts } from "@/lib/catalog";
-import { Bookmark, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import { AddToCollectionButton } from "@/components/AddToCollectionButton";
 
 const productQuery = (slug: string) =>
   queryOptions({
@@ -129,13 +130,10 @@ function ProductPage() {
           </dl>
 
           <div className="mt-6 flex gap-2">
-            <button
-              type="button"
+            <AddToCollectionButton
+              productId={product.id}
               className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
-            >
-              <Bookmark className="h-4 w-4" />
-              Add to Collection
-            </button>
+            />
           </div>
         </div>
 
