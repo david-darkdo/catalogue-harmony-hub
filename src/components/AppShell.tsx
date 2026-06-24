@@ -107,8 +107,9 @@ function BottomNav() {
   const items = [
     { to: "/" as const, label: "Home", icon: Home, active: pathname === "/" },
     { to: "/search" as const, label: "Search", icon: Search, active: pathname.startsWith("/search") },
-    { to: "/collection" as const, label: "Saved", icon: Bookmark, active: pathname.startsWith("/collection") },
-    { to: "/contact" as const, label: "Contact", icon: User, active: pathname.startsWith("/contact") },
+    { to: "/feed" as const, label: "Feed", icon: Compass, active: pathname.startsWith("/feed") },
+    { to: "/collection" as const, label: "Collection", icon: Bookmark, active: pathname.startsWith("/collection") },
+    { to: "/account" as const, label: "Account", icon: User, active: pathname.startsWith("/account") },
   ];
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 backdrop-blur">
