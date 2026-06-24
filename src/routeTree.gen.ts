@@ -19,6 +19,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProductSlugRouteImport } from './routes/product.$slug'
 import { Route as CollectionIdRouteImport } from './routes/collection.$id'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 
 const SearchRoute = SearchRouteImport.update({
@@ -70,6 +71,11 @@ const CollectionIdRoute = CollectionIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => CollectionRoute,
 } as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -85,6 +91,7 @@ export interface FileRoutesByFullPath {
   '/feed': typeof FeedRoute
   '/search': typeof SearchRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/settings': typeof AuthenticatedSettingsRoute
   '/collection/$id': typeof CollectionIdRoute
   '/product/$slug': typeof ProductSlugRoute
 }
@@ -97,6 +104,7 @@ export interface FileRoutesByTo {
   '/feed': typeof FeedRoute
   '/search': typeof SearchRoute
   '/admin': typeof AuthenticatedAdminRoute
+  '/settings': typeof AuthenticatedSettingsRoute
   '/collection/$id': typeof CollectionIdRoute
   '/product/$slug': typeof ProductSlugRoute
 }
@@ -111,6 +119,7 @@ export interface FileRoutesById {
   '/feed': typeof FeedRoute
   '/search': typeof SearchRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/collection/$id': typeof CollectionIdRoute
   '/product/$slug': typeof ProductSlugRoute
 }
@@ -125,6 +134,7 @@ export interface FileRouteTypes {
     | '/feed'
     | '/search'
     | '/admin'
+    | '/settings'
     | '/collection/$id'
     | '/product/$slug'
   fileRoutesByTo: FileRoutesByTo
@@ -137,6 +147,7 @@ export interface FileRouteTypes {
     | '/feed'
     | '/search'
     | '/admin'
+    | '/settings'
     | '/collection/$id'
     | '/product/$slug'
   id:
@@ -150,6 +161,7 @@ export interface FileRouteTypes {
     | '/feed'
     | '/search'
     | '/_authenticated/admin'
+    | '/_authenticated/settings'
     | '/collection/$id'
     | '/product/$slug'
   fileRoutesById: FileRoutesById
@@ -238,6 +250,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CollectionIdRouteImport
       parentRoute: typeof CollectionRoute
     }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
       path: '/admin'
@@ -250,10 +269,12 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

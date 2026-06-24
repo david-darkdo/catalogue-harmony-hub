@@ -53,9 +53,9 @@ function SettingsPage() {
     for (const [k] of FIELDS) payload[k] = form[k]?.trim() || null;
     let error;
     if (settings?.id) {
-      ({ error } = await supabase.from("app_settings").update(payload).eq("id", settings.id));
+      ({ error } = await supabase.from("app_settings").update(payload as any).eq("id", settings.id));
     } else {
-      ({ error } = await supabase.from("app_settings").insert(payload));
+      ({ error } = await supabase.from("app_settings").insert(payload as any));
     }
     setSaving(false);
     if (error) toast.error(error.message);
