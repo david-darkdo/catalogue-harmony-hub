@@ -91,7 +91,7 @@ function TopBar() {
                 <>
                   <Link to="/auth" onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-sm hover:bg-surface-2">Sign in</Link>
                   <Link to="/collection" onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-sm hover:bg-surface-2">My Collection</Link>
-                  <Link to="/contact" onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-sm hover:bg-surface-2">Contact</Link>
+                  <Link to="/account" onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-sm hover:bg-surface-2">Contact</Link>
                 </>
               )}
             </div>
