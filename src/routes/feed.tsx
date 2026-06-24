@@ -72,7 +72,7 @@ function FeedPage() {
     navigate({ to: "/feed", search: { type: slug, category: undefined, subcategory: undefined } });
   const setCategory = (slug?: string) =>
     navigate({
-      to: "/",
+      to: "/feed",
       search: { ...search, category: slug, subcategory: undefined },
     });
   const setSub = (slug?: string) =>
