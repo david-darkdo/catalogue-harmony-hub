@@ -56,16 +56,12 @@ function CollectionPage() {
     }
     let id = collectionId;
     if (!id && user) id = await ensureUserCollection(user.id);
-    const shareUrl = id
-      ? `${window.location.origin}/collection/${id}`
-      : window.location.origin + "/collection";
-    const lines = [
-      "Hi! I'm interested in these products from Stoneworks:",
-      ...products.map((p) => `• ${p.name} (Code: ${p.code})`),
-      "",
-      `View my full collection: ${shareUrl}`,
-    ];
-    const msg = lines.join("\n");
+    if (!id) {
+      toast("Sign in to push your collection to WhatsApp");
+      return;
+    }
+    const shareUrl = `${window.location.origin}/collection/${id}`;
+    const msg = `Hi! Here is my Stoneworks collection: ${shareUrl}`;
     window.open(waLink(settings.sales_whatsapp, msg), "_blank", "noopener,noreferrer");
   };
 

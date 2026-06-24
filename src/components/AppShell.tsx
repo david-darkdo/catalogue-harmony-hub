@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Home, Search, Bookmark, User, LogOut, Shield } from "lucide-react";
+import { Home, Search, Compass, Bookmark, User, LogOut, Shield } from "lucide-react";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -91,7 +91,7 @@ function TopBar() {
                 <>
                   <Link to="/auth" onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-sm hover:bg-surface-2">Sign in</Link>
                   <Link to="/collection" onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-sm hover:bg-surface-2">My Collection</Link>
-                  <Link to="/contact" onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-sm hover:bg-surface-2">Contact</Link>
+                  <Link to="/account" onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-sm hover:bg-surface-2">Contact</Link>
                 </>
               )}
             </div>
@@ -107,8 +107,9 @@ function BottomNav() {
   const items = [
     { to: "/" as const, label: "Home", icon: Home, active: pathname === "/" },
     { to: "/search" as const, label: "Search", icon: Search, active: pathname.startsWith("/search") },
-    { to: "/collection" as const, label: "Saved", icon: Bookmark, active: pathname.startsWith("/collection") },
-    { to: "/contact" as const, label: "Contact", icon: User, active: pathname.startsWith("/contact") },
+    { to: "/feed" as const, label: "Feed", icon: Compass, active: pathname.startsWith("/feed") },
+    { to: "/collection" as const, label: "Collection", icon: Bookmark, active: pathname.startsWith("/collection") },
+    { to: "/account" as const, label: "Account", icon: User, active: pathname.startsWith("/account") },
   ];
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 backdrop-blur">

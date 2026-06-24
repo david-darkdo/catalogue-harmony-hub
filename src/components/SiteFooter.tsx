@@ -19,7 +19,7 @@ export function SiteFooter() {
             <li><Link to="/" className="hover:text-primary">Feed</Link></li>
             <li><Link to="/search" search={{ q: "" }} className="hover:text-primary">Search</Link></li>
             <li><Link to="/collection" className="hover:text-primary">My Collection</Link></li>
-            <li><Link to="/contact" className="hover:text-primary">Contact</Link></li>
+            <li><Link to="/" className="hover:text-primary">Contact</Link></li>
           </ul>
         </div>
         <div>
