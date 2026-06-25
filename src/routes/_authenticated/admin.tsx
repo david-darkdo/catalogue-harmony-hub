@@ -52,7 +52,7 @@ function AdminPage() {
     const load = async () => {
       const { data } = await supabase
         .from("products")
-        .select("id,slug,name,code,is_published,created_at")
+        .select("id,slug,name,code,is_published,is_ai_processing,created_at")
         .order("created_at", { ascending: false })
         .limit(50);
       setProducts(data ?? []);
@@ -91,19 +91,30 @@ function AdminPage() {
 
   const saveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!settings) return;
     setSavingSettings(true);
-    const { error } = await supabase
-      .from("app_settings")
-      .update(form as never)
-      .eq("id", settings.id);
+    const payload: Record<string, string | null> = {};
+    for (const k of Object.keys(form)) payload[k] = form[k]?.trim() || null;
+    const { error } = settings?.id
+      ? await supabase.from("app_settings").update(payload as never).eq("id", settings.id)
+      : await supabase.from("app_settings").insert(payload as never);
     setSavingSettings(false);
     if (error) {
       toast.error(error.message);
       return;
     }
-    toast.success("Settings updated");
+    toast.success("Settings saved");
     refetch();
+  };
+
+  const toggleAiProcessing = async (id: string, current: boolean) => {
+    const next = !current;
+    const { error } = await supabase
+      .from("products")
+      .update({ is_ai_processing: next } as never)
+      .eq("id", id);
+    if (error) return toast.error(error.message);
+    setProducts((ps) => ps.map((p) => (p.id === id ? { ...p, is_ai_processing: next } : p)));
+    toast.success(next ? "AI generation queued (stub)" : "AI flag cleared");
   };
 
   const deleteProduct = async (id: string) => {
@@ -184,13 +195,23 @@ function AdminPage() {
         <p className="text-xs text-muted-foreground">Most recent 50 products.</p>
         <ul className="mt-3 divide-y divide-border">
           {products.map((p) => (
-            <li key={p.id} className="flex items-center gap-3 py-2 text-sm">
+            <li key={p.id} className="flex flex-wrap items-center gap-2 py-2 text-sm">
               <div className="min-w-0 flex-1">
                 <Link to="/product/$slug" params={{ slug: p.slug }} className="block truncate font-medium hover:text-primary">
                   {p.name}
                 </Link>
-                <div className="text-xs text-muted-foreground">Code · {p.code} · {p.is_published ? "Published" : "Draft"}</div>
+                <div className="text-xs text-muted-foreground">
+                  Code · {p.code} · {p.is_published ? "Published" : "Draft"}
+                  {p.is_ai_processing ? " · AI processing…" : ""}
+                </div>
               </div>
+              <button
+                onClick={() => toggleAiProcessing(p.id, p.is_ai_processing)}
+                className="rounded-md border border-primary/40 px-2 py-1 text-xs text-primary hover:bg-primary/10"
+                title="Stub: queues AI asset generation"
+              >
+                {p.is_ai_processing ? "Regenerate AI Assets" : "Generate AI Assets"}
+              </button>
               <button onClick={() => deleteProduct(p.id)} className="rounded-md border border-border px-2 py-1 text-xs text-destructive hover:bg-destructive/10">
                 Delete
               </button>

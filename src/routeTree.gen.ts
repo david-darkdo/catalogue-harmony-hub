@@ -10,7 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SearchRouteImport } from './routes/search'
-import { Route as FeedRouteImport } from './routes/feed'
+import { Route as HomeRouteImport } from './routes/home'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as CollectionRouteImport } from './routes/collection'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -27,9 +27,9 @@ const SearchRoute = SearchRouteImport.update({
   path: '/search',
   getParentRoute: () => rootRouteImport,
 } as any)
-const FeedRoute = FeedRouteImport.update({
-  id: '/feed',
-  path: '/feed',
+const HomeRoute = HomeRouteImport.update({
+  id: '/home',
+  path: '/home',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContactRoute = ContactRouteImport.update({
@@ -88,7 +88,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/collection': typeof CollectionRouteWithChildren
   '/contact': typeof ContactRoute
-  '/feed': typeof FeedRoute
+  '/home': typeof HomeRoute
   '/search': typeof SearchRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -101,7 +101,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/collection': typeof CollectionRouteWithChildren
   '/contact': typeof ContactRoute
-  '/feed': typeof FeedRoute
+  '/home': typeof HomeRoute
   '/search': typeof SearchRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -116,7 +116,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/collection': typeof CollectionRouteWithChildren
   '/contact': typeof ContactRoute
-  '/feed': typeof FeedRoute
+  '/home': typeof HomeRoute
   '/search': typeof SearchRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
@@ -131,7 +131,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/collection'
     | '/contact'
-    | '/feed'
+    | '/home'
     | '/search'
     | '/admin'
     | '/settings'
@@ -144,7 +144,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/collection'
     | '/contact'
-    | '/feed'
+    | '/home'
     | '/search'
     | '/admin'
     | '/settings'
@@ -158,7 +158,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/collection'
     | '/contact'
-    | '/feed'
+    | '/home'
     | '/search'
     | '/_authenticated/admin'
     | '/_authenticated/settings'
@@ -173,7 +173,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CollectionRoute: typeof CollectionRouteWithChildren
   ContactRoute: typeof ContactRoute
-  FeedRoute: typeof FeedRoute
+  HomeRoute: typeof HomeRoute
   SearchRoute: typeof SearchRoute
   ProductSlugRoute: typeof ProductSlugRoute
 }
@@ -187,11 +187,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SearchRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/feed': {
-      id: '/feed'
-      path: '/feed'
-      fullPath: '/feed'
-      preLoaderRoute: typeof FeedRouteImport
+    '/home': {
+      id: '/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof HomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contact': {
@@ -299,7 +299,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CollectionRoute: CollectionRouteWithChildren,
   ContactRoute: ContactRoute,
-  FeedRoute: FeedRoute,
+  HomeRoute: HomeRoute,
   SearchRoute: SearchRoute,
   ProductSlugRoute: ProductSlugRoute,
 }
