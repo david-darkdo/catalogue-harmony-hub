@@ -18,13 +18,10 @@ export const Route = createFileRoute("/account")({
   component: AccountPage,
 });
 
-type Roles = { admin: boolean; super_admin: boolean; customer: boolean };
-
 function AccountPage() {
-  const { user, loading } = useAuth();
+  const { user, loading, isAdmin, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<{ full_name: string | null; email: string | null } | null>(null);
-  const [roles, setRoles] = useState<Roles>({ admin: false, super_admin: false, customer: false });
   const [fullName, setFullName] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -38,17 +35,6 @@ function AccountPage() {
         .maybeSingle();
       setProfile(p ?? null);
       setFullName(p?.full_name ?? "");
-
-      const { data: rs } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id);
-      const set = new Set((rs ?? []).map((r: any) => r.role));
-      setRoles({
-        admin: set.has("admin"),
-        super_admin: set.has("super_admin"),
-        customer: set.has("customer"),
-      });
     })();
   }, [user]);
 
