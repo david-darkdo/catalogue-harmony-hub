@@ -18,13 +18,10 @@ export const Route = createFileRoute("/account")({
   component: AccountPage,
 });
 
-type Roles = { admin: boolean; super_admin: boolean; customer: boolean };
-
 function AccountPage() {
-  const { user, loading } = useAuth();
+  const { user, loading, isAdmin, isSuperAdmin } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<{ full_name: string | null; email: string | null } | null>(null);
-  const [roles, setRoles] = useState<Roles>({ admin: false, super_admin: false, customer: false });
   const [fullName, setFullName] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -38,17 +35,6 @@ function AccountPage() {
         .maybeSingle();
       setProfile(p ?? null);
       setFullName(p?.full_name ?? "");
-
-      const { data: rs } = await supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", user.id);
-      const set = new Set((rs ?? []).map((r: any) => r.role));
-      setRoles({
-        admin: set.has("admin"),
-        super_admin: set.has("super_admin"),
-        customer: set.has("customer"),
-      });
     })();
   }, [user]);
 
@@ -89,7 +75,7 @@ function AccountPage() {
     );
   }
 
-  const roleLabel = roles.super_admin ? "Super Admin" : roles.admin ? "Admin" : "Customer";
+  const roleLabel = isSuperAdmin ? "Super Admin" : isAdmin ? "Admin" : "Customer";
 
   return (
     <div className="container-app py-8">
@@ -118,7 +104,7 @@ function AccountPage() {
             </div>
           </div>
           <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-primary">
-            {roles.super_admin || roles.admin ? <ShieldCheck className="h-3 w-3" /> : <Shield className="h-3 w-3" />}
+            {isAdmin ? <ShieldCheck className="h-3 w-3" /> : <Shield className="h-3 w-3" />}
             {roleLabel}
           </span>
         </div>
@@ -148,7 +134,7 @@ function AccountPage() {
           </div>
         </Link>
 
-        {(roles.admin || roles.super_admin) && (
+        {isAdmin && (
           <Link to="/admin" className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 hover:border-primary">
             <Shield className="h-5 w-5 text-primary" />
             <div>
@@ -158,7 +144,7 @@ function AccountPage() {
           </Link>
         )}
 
-        {roles.super_admin && (
+        {isSuperAdmin && (
           <Link to="/settings" className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 hover:border-primary">
             <SettingsIcon className="h-5 w-5 text-primary" />
             <div>
