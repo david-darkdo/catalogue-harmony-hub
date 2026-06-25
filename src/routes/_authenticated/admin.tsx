@@ -91,19 +91,30 @@ function AdminPage() {
 
   const saveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!settings) return;
     setSavingSettings(true);
-    const { error } = await supabase
-      .from("app_settings")
-      .update(form as never)
-      .eq("id", settings.id);
+    const payload: Record<string, string | null> = {};
+    for (const k of Object.keys(form)) payload[k] = form[k]?.trim() || null;
+    const { error } = settings?.id
+      ? await supabase.from("app_settings").update(payload as never).eq("id", settings.id)
+      : await supabase.from("app_settings").insert(payload as never);
     setSavingSettings(false);
     if (error) {
       toast.error(error.message);
       return;
     }
-    toast.success("Settings updated");
+    toast.success("Settings saved");
     refetch();
+  };
+
+  const toggleAiProcessing = async (id: string, current: boolean) => {
+    const next = !current;
+    const { error } = await supabase
+      .from("products")
+      .update({ is_ai_processing: next } as never)
+      .eq("id", id);
+    if (error) return toast.error(error.message);
+    setProducts((ps) => ps.map((p) => (p.id === id ? { ...p, is_ai_processing: next } : p)));
+    toast.success(next ? "AI generation queued (stub)" : "AI flag cleared");
   };
 
   const deleteProduct = async (id: string) => {
