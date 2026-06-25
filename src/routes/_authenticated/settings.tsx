@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useAppSettings } from "@/lib/settings";
+import { useAppSettings, APP_SETTINGS_QUERY_KEY } from "@/lib/settings";
+import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { Settings as SettingsIcon, ShieldAlert } from "lucide-react";
 
@@ -22,22 +24,11 @@ const FIELDS: [string, string, string?][] = [
 ];
 
 function SettingsPage() {
-  const { data: settings, refetch } = useAppSettings();
-  const [isSuperAdmin, setIsSuperAdmin] = useState<boolean | null>(null);
+  const queryClient = useQueryClient();
+  const { data: settings } = useAppSettings();
+  const { loading: authLoading, isSuperAdmin } = useAuth();
   const [form, setForm] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    (async () => {
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) return setIsSuperAdmin(false);
-      const { data } = await supabase.rpc("has_role", {
-        _user_id: u.user.id,
-        _role: "super_admin",
-      });
-      setIsSuperAdmin(Boolean(data));
-    })();
-  }, []);
 
   useEffect(() => {
     if (!settings) return;
@@ -51,21 +42,21 @@ function SettingsPage() {
     setSaving(true);
     const payload: Record<string, string | null> = {};
     for (const [k] of FIELDS) payload[k] = form[k]?.trim() || null;
-    let error;
-    if (settings?.id) {
-      ({ error } = await supabase.from("app_settings").update(payload as any).eq("id", settings.id));
-    } else {
-      ({ error } = await supabase.from("app_settings").insert(payload as any));
-    }
+    // Upsert: update existing row, else insert a new one.
+    const { error } = settings?.id
+      ? await supabase.from("app_settings").update(payload as any).eq("id", settings.id)
+      : await supabase.from("app_settings").insert(payload as any);
     setSaving(false);
-    if (error) toast.error(error.message);
-    else {
-      toast.success("Settings saved");
-      refetch();
+    if (error) {
+      toast.error(error.message);
+      return;
     }
+    toast.success("Settings saved");
+    // Global cache invalidation → floating buttons & contact sections re-render immediately.
+    await queryClient.invalidateQueries({ queryKey: APP_SETTINGS_QUERY_KEY });
   };
 
-  if (isSuperAdmin === null) {
+  if (authLoading) {
     return <div className="container-app py-10 text-sm text-muted-foreground">Loading…</div>;
   }
 

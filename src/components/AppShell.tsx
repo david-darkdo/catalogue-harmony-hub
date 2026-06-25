@@ -1,6 +1,6 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { Home, Search, Compass, Bookmark, User, LogOut, Shield } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { FloatingWhatsApp } from "./FloatingWhatsApp";
@@ -21,18 +21,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 function TopBar() {
   const navigate = useNavigate();
   const search = useRouterState({ select: (s) => s.location.search as { q?: string } });
-  const { user } = useAuth();
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { user, isAdmin } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!user) { setIsAdmin(false); return; }
-    supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }).then(({ data }) => {
-      if (!cancelled) setIsAdmin(Boolean(data));
-    });
-    return () => { cancelled = true; };
-  }, [user]);
 
   const signOut = async () => {
     await supabase.auth.signOut();
