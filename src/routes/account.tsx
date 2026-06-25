@@ -144,7 +144,7 @@ function AccountPage() {
           </Link>
         )}
 
-        {roles.super_admin && (
+        {isSuperAdmin && (
           <Link to="/settings" className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 hover:border-primary">
             <SettingsIcon className="h-5 w-5 text-primary" />
             <div>
