@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_prompt_templates: {
+        Row: {
+          created_at: string
+          description_prompt: string
+          id: string
+          installation_context_id: string
+          installed_prompt: string
+          studio_prompt: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description_prompt: string
+          id?: string
+          installation_context_id: string
+          installed_prompt: string
+          studio_prompt: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description_prompt?: string
+          id?: string
+          installation_context_id?: string
+          installed_prompt?: string
+          studio_prompt?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_prompt_templates_installation_context_id_fkey"
+            columns: ["installation_context_id"]
+            isOneToOne: false
+            referencedRelation: "installation_contexts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_settings: {
         Row: {
           company_address: string | null
@@ -148,6 +186,7 @@ export type Database = {
       family_groups: {
         Row: {
           created_at: string
+          custom_ai_prompt_override: string | null
           id: string
           name: string
           slug: string
@@ -155,6 +194,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          custom_ai_prompt_override?: string | null
           id?: string
           name: string
           slug: string
@@ -162,6 +202,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          custom_ai_prompt_override?: string | null
           id?: string
           name?: string
           slug?: string
@@ -177,26 +218,64 @@ export type Database = {
           },
         ]
       }
+      installation_contexts: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       product_types: {
         Row: {
           created_at: string
           id: string
+          installation_context_id: string
           name: string
           slug: string
         }
         Insert: {
           created_at?: string
           id?: string
+          installation_context_id: string
           name: string
           slug: string
         }
         Update: {
           created_at?: string
           id?: string
+          installation_context_id?: string
           name?: string
           slug?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "product_types_installation_context_id_fkey"
+            columns: ["installation_context_id"]
+            isOneToOne: false
+            referencedRelation: "installation_contexts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       product_views: {
         Row: {
@@ -237,10 +316,12 @@ export type Database = {
           created_at: string
           family_id: string | null
           finish: string | null
+          generated_description: string | null
           generated_installed_image: string | null
           generated_studio_image: string | null
           id: string
           image_url: string | null
+          is_ai_processing: boolean
           is_published: boolean
           material: string | null
           name: string
@@ -263,10 +344,12 @@ export type Database = {
           created_at?: string
           family_id?: string | null
           finish?: string | null
+          generated_description?: string | null
           generated_installed_image?: string | null
           generated_studio_image?: string | null
           id?: string
           image_url?: string | null
+          is_ai_processing?: boolean
           is_published?: boolean
           material?: string | null
           name: string
@@ -289,10 +372,12 @@ export type Database = {
           created_at?: string
           family_id?: string | null
           finish?: string | null
+          generated_description?: string | null
           generated_installed_image?: string | null
           generated_studio_image?: string | null
           id?: string
           image_url?: string | null
+          is_ai_processing?: boolean
           is_published?: boolean
           material?: string | null
           name?: string
