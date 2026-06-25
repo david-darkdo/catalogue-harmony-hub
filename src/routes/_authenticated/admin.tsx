@@ -195,13 +195,23 @@ function AdminPage() {
         <p className="text-xs text-muted-foreground">Most recent 50 products.</p>
         <ul className="mt-3 divide-y divide-border">
           {products.map((p) => (
-            <li key={p.id} className="flex items-center gap-3 py-2 text-sm">
+            <li key={p.id} className="flex flex-wrap items-center gap-2 py-2 text-sm">
               <div className="min-w-0 flex-1">
                 <Link to="/product/$slug" params={{ slug: p.slug }} className="block truncate font-medium hover:text-primary">
                   {p.name}
                 </Link>
-                <div className="text-xs text-muted-foreground">Code · {p.code} · {p.is_published ? "Published" : "Draft"}</div>
+                <div className="text-xs text-muted-foreground">
+                  Code · {p.code} · {p.is_published ? "Published" : "Draft"}
+                  {p.is_ai_processing ? " · AI processing…" : ""}
+                </div>
               </div>
+              <button
+                onClick={() => toggleAiProcessing(p.id, p.is_ai_processing)}
+                className="rounded-md border border-primary/40 px-2 py-1 text-xs text-primary hover:bg-primary/10"
+                title="Stub: queues AI asset generation"
+              >
+                {p.is_ai_processing ? "Regenerate AI Assets" : "Generate AI Assets"}
+              </button>
               <button onClick={() => deleteProduct(p.id)} className="rounded-md border border-border px-2 py-1 text-xs text-destructive hover:bg-destructive/10">
                 Delete
               </button>
