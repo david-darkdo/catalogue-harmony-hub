@@ -52,7 +52,7 @@ function AdminPage() {
     const load = async () => {
       const { data } = await supabase
         .from("products")
-        .select("id,slug,name,code,is_published,created_at")
+        .select("id,slug,name,code,is_published,is_ai_processing,created_at")
         .order("created_at", { ascending: false })
         .limit(50);
       setProducts(data ?? []);
