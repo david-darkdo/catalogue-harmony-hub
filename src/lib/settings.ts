@@ -24,11 +24,14 @@ export async function fetchAppSettings(): Promise<AppSettings | null> {
   return data as AppSettings | null;
 }
 
+export const APP_SETTINGS_QUERY_KEY = ["app_settings"] as const;
+
 export function useAppSettings() {
   return useQuery({
-    queryKey: ["app_settings"],
+    queryKey: APP_SETTINGS_QUERY_KEY,
     queryFn: fetchAppSettings,
-    staleTime: 1000 * 60 * 5,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 }
 
