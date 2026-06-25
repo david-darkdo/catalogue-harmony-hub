@@ -105,9 +105,9 @@ function TopBar() {
 function BottomNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const items = [
-    { to: "/" as const, label: "Home", icon: Home, active: pathname === "/" },
+    { to: "/home" as const, label: "Home", icon: Home, active: pathname.startsWith("/home") },
     { to: "/search" as const, label: "Search", icon: Search, active: pathname.startsWith("/search") },
-    { to: "/feed" as const, label: "Feed", icon: Compass, active: pathname.startsWith("/feed") },
+    { to: "/" as const, label: "Feed", icon: Compass, active: pathname === "/" },
     { to: "/collection" as const, label: "Collection", icon: Bookmark, active: pathname.startsWith("/collection") },
     { to: "/account" as const, label: "Account", icon: User, active: pathname.startsWith("/account") },
   ];
