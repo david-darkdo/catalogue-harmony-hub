@@ -7,7 +7,7 @@ import { useAuth, type AppRole } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { Search, Settings as SettingsIcon, Package, Users } from "lucide-react";
 
-export const Route = createFileRoute("/_authenticated/admin")({
+export const Route = createFileRoute("/_authenticated/admin/")({
   head: () => ({ meta: [{ title: "Admin — Stoneworks" }] }),
   component: AdminPage,
 });
