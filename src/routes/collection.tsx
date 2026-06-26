@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import {
   fetchProductsByIds,
@@ -59,6 +60,26 @@ function CollectionPage() {
     if (!id) {
       toast("Sign in to push your collection to WhatsApp");
       return;
+    }
+    // Auto-create an inquiry record (Business Operations pipeline)
+    if (user) {
+      try {
+        await supabase.from("whatsapp_inquiries").insert({
+          collection_id: id,
+          customer_name: user.user_metadata?.full_name || user.email || "Customer",
+          customer_phone: user.phone || user.user_metadata?.phone || "",
+          customer_email: user.email ?? null,
+          whatsapp_number: user.user_metadata?.whatsapp || user.phone || null,
+          inquiry_status: "NEW",
+          status: "pending",
+        } as never);
+        await supabase
+          .from("collections")
+          .update({ whatsapp_sent: true } as never)
+          .eq("id", id);
+      } catch {
+        /* non-blocking */
+      }
     }
     const shareUrl = `${window.location.origin}/collection/${id}`;
     const msg = `Hi! Here is my Stoneworks collection: ${shareUrl}`;

@@ -21,6 +21,8 @@ import { Route as ProductSlugRouteImport } from './routes/product.$slug'
 import { Route as CollectionIdRouteImport } from './routes/collection.$id'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as AuthenticatedAdminBusinessRouteImport } from './routes/_authenticated/admin.business'
 
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
@@ -81,6 +83,17 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const AuthenticatedAdminBusinessRoute =
+  AuthenticatedAdminBusinessRouteImport.update({
+    id: '/business',
+    path: '/business',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -90,10 +103,12 @@ export interface FileRoutesByFullPath {
   '/contact': typeof ContactRoute
   '/home': typeof HomeRoute
   '/search': typeof SearchRoute
-  '/admin': typeof AuthenticatedAdminRoute
+  '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/settings': typeof AuthenticatedSettingsRoute
   '/collection/$id': typeof CollectionIdRoute
   '/product/$slug': typeof ProductSlugRoute
+  '/admin/business': typeof AuthenticatedAdminBusinessRoute
+  '/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -103,10 +118,11 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/home': typeof HomeRoute
   '/search': typeof SearchRoute
-  '/admin': typeof AuthenticatedAdminRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/collection/$id': typeof CollectionIdRoute
   '/product/$slug': typeof ProductSlugRoute
+  '/admin/business': typeof AuthenticatedAdminBusinessRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -118,10 +134,12 @@ export interface FileRoutesById {
   '/contact': typeof ContactRoute
   '/home': typeof HomeRoute
   '/search': typeof SearchRoute
-  '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/collection/$id': typeof CollectionIdRoute
   '/product/$slug': typeof ProductSlugRoute
+  '/_authenticated/admin/business': typeof AuthenticatedAdminBusinessRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -137,6 +155,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/collection/$id'
     | '/product/$slug'
+    | '/admin/business'
+    | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -146,10 +166,11 @@ export interface FileRouteTypes {
     | '/contact'
     | '/home'
     | '/search'
-    | '/admin'
     | '/settings'
     | '/collection/$id'
     | '/product/$slug'
+    | '/admin/business'
+    | '/admin'
   id:
     | '__root__'
     | '/'
@@ -164,6 +185,8 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/collection/$id'
     | '/product/$slug'
+    | '/_authenticated/admin/business'
+    | '/_authenticated/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -264,16 +287,43 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/business': {
+      id: '/_authenticated/admin/business'
+      path: '/business'
+      fullPath: '/admin/business'
+      preLoaderRoute: typeof AuthenticatedAdminBusinessRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
   }
 }
 
+interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminBusinessRoute: typeof AuthenticatedAdminBusinessRoute
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+}
+
+const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminBusinessRoute: AuthenticatedAdminBusinessRoute,
+  AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+}
+
+const AuthenticatedAdminRouteWithChildren =
+  AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
 }
 

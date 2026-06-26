@@ -164,22 +164,37 @@ export type Database = {
       }
       collections: {
         Row: {
+          closed_at: string | null
           created_at: string
           id: string
+          inquiry_status: Database["public"]["Enums"]["inquiry_pipeline_status"]
+          internal_notes: string | null
           name: string
+          updated_at: string
           user_id: string
+          whatsapp_sent: boolean
         }
         Insert: {
+          closed_at?: string | null
           created_at?: string
           id?: string
+          inquiry_status?: Database["public"]["Enums"]["inquiry_pipeline_status"]
+          internal_notes?: string | null
           name: string
+          updated_at?: string
           user_id: string
+          whatsapp_sent?: boolean
         }
         Update: {
+          closed_at?: string | null
           created_at?: string
           id?: string
+          inquiry_status?: Database["public"]["Enums"]["inquiry_pipeline_status"]
+          internal_notes?: string | null
           name?: string
+          updated_at?: string
           user_id?: string
+          whatsapp_sent?: boolean
         }
         Relationships: []
       }
@@ -501,28 +516,49 @@ export type Database = {
       }
       whatsapp_inquiries: {
         Row: {
+          assigned_admin_id: string | null
           collection_id: string
           created_at: string
+          customer_email: string | null
           customer_name: string
           customer_phone: string
           id: string
+          inquiry_status: Database["public"]["Enums"]["inquiry_pipeline_status"]
+          internal_notes: string | null
+          last_contacted_at: string | null
           status: string
+          updated_at: string
+          whatsapp_number: string | null
         }
         Insert: {
+          assigned_admin_id?: string | null
           collection_id: string
           created_at?: string
+          customer_email?: string | null
           customer_name: string
           customer_phone: string
           id?: string
+          inquiry_status?: Database["public"]["Enums"]["inquiry_pipeline_status"]
+          internal_notes?: string | null
+          last_contacted_at?: string | null
           status?: string
+          updated_at?: string
+          whatsapp_number?: string | null
         }
         Update: {
+          assigned_admin_id?: string | null
           collection_id?: string
           created_at?: string
+          customer_email?: string | null
           customer_name?: string
           customer_phone?: string
           id?: string
+          inquiry_status?: Database["public"]["Enums"]["inquiry_pipeline_status"]
+          internal_notes?: string | null
+          last_contacted_at?: string | null
           status?: string
+          updated_at?: string
+          whatsapp_number?: string | null
         }
         Relationships: [
           {
@@ -550,6 +586,13 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "user" | "customer" | "super_admin"
+      inquiry_pipeline_status:
+        | "NEW"
+        | "CONTACTED"
+        | "NEGOTIATING"
+        | "QUOTED"
+        | "CLOSED"
+        | "LOST"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -678,6 +721,14 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "user", "customer", "super_admin"],
+      inquiry_pipeline_status: [
+        "NEW",
+        "CONTACTED",
+        "NEGOTIATING",
+        "QUOTED",
+        "CLOSED",
+        "LOST",
+      ],
     },
   },
 } as const
