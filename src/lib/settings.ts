@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
 export type AppSettings = {
-  id: string;
+  id: string | null;
   support_whatsapp: string | null;
   sales_whatsapp: string | null;
   company_email: string | null;
@@ -13,15 +13,46 @@ export type AppSettings = {
   tiktok_url: string | null;
 };
 
-export async function fetchAppSettings(): Promise<AppSettings | null> {
-  const { data, error } = await supabase
-    .from("app_settings")
-    .select("*")
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-  if (error) throw error;
-  return data as AppSettings | null;
+const DEFAULT_SETTINGS: AppSettings = {
+  id: null,
+  support_whatsapp: null,
+  sales_whatsapp: null,
+  company_email: null,
+  company_address: null,
+  map_url: null,
+  facebook_url: null,
+  instagram_url: null,
+  tiktok_url: null,
+};
+
+// Always returns a usable settings object. Safe Mode: on missing row or any
+// failure, return DEFAULT_SETTINGS so UI never crashes.
+export async function fetchAppSettings(): Promise<AppSettings> {
+  try {
+    const { data, error } = await supabase
+      .from("app_settings")
+      .select("*")
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (error) return DEFAULT_SETTINGS;
+    if (data) return data as AppSettings;
+
+    // No row yet — try to seed one (requires admin RLS). Ignore failures.
+    try {
+      const { data: inserted } = await supabase
+        .from("app_settings")
+        .insert({} as never)
+        .select("*")
+        .maybeSingle();
+      if (inserted) return inserted as AppSettings;
+    } catch {
+      /* RLS or network — fall back to in-memory defaults */
+    }
+    return DEFAULT_SETTINGS;
+  } catch {
+    return DEFAULT_SETTINGS;
+  }
 }
 
 export const APP_SETTINGS_QUERY_KEY = ["app_settings"] as const;
@@ -32,6 +63,7 @@ export function useAppSettings() {
     queryFn: fetchAppSettings,
     staleTime: 0,
     refetchOnWindowFocus: true,
+    placeholderData: DEFAULT_SETTINGS,
   });
 }
 
