@@ -3,7 +3,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
-import { Search, LayoutDashboard, Briefcase } from "lucide-react";
+import { Search, LayoutDashboard, Briefcase, Package, Layers } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Admin — Stoneworks" }] }),
@@ -23,13 +23,13 @@ function AdminLayout() {
     setSearching(true);
     const { data, error } = await supabase
       .from("products")
-      .select("slug")
+      .select("id")
       .ilike("code", code.trim())
       .maybeSingle();
     setSearching(false);
     if (error) return toast.error(error.message);
-    if (data?.slug) {
-      navigate({ to: "/product/$slug", params: { slug: data.slug } });
+    if (data?.id) {
+      navigate({ to: "/admin/products/$id", params: { id: data.id } });
       setCode("");
     } else {
       toast.error(`No product with code "${code}"`);
@@ -52,6 +52,8 @@ function AdminLayout() {
 
   const tabs = [
     { to: "/admin" as const, label: "Operations", icon: LayoutDashboard, active: pathname === "/admin" },
+    { to: "/admin/products" as const, label: "Products", icon: Package, active: pathname.startsWith("/admin/products") },
+    { to: "/admin/hierarchy" as const, label: "Hierarchy", icon: Layers, active: pathname.startsWith("/admin/hierarchy") },
     { to: "/admin/business" as const, label: "Business", icon: Briefcase, active: pathname.startsWith("/admin/business") },
   ];
 
@@ -59,7 +61,7 @@ function AdminLayout() {
     <div className="min-h-[60vh]">
       <div className="sticky top-[57px] z-20 border-b border-border bg-background/95 backdrop-blur">
         <div className="container-app flex flex-wrap items-center gap-3 py-3">
-          <div className="flex gap-1">
+          <div className="flex flex-wrap gap-1">
             {tabs.map((t) => (
               <Link
                 key={t.to}

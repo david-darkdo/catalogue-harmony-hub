@@ -262,6 +262,7 @@ export type Database = {
       }
       product_types: {
         Row: {
+          code_prefix: string
           created_at: string
           id: string
           installation_context_id: string
@@ -269,6 +270,7 @@ export type Database = {
           slug: string
         }
         Insert: {
+          code_prefix: string
           created_at?: string
           id?: string
           installation_context_id: string
@@ -276,6 +278,7 @@ export type Database = {
           slug: string
         }
         Update: {
+          code_prefix?: string
           created_at?: string
           id?: string
           installation_context_id?: string
@@ -323,84 +326,126 @@ export type Database = {
       }
       products: {
         Row: {
+          ai_status: Database["public"]["Enums"]["ai_asset_status"]
+          alt_text: string | null
           app_keywords: string[] | null
+          app_search_keywords: string[] | null
           brand: string | null
+          canonical_slug: string | null
           category_id: string | null
           code: string
           color: string | null
           created_at: string
+          deleted_at: string | null
           family_id: string | null
+          featured_feed: boolean
+          featured_homepage: boolean
           finish: string | null
+          finish_name: string | null
           generated_description: string | null
           generated_installed_image: string | null
           generated_studio_image: string | null
+          hidden: boolean
           id: string
           image_url: string | null
+          installation_context_id: string | null
           is_ai_processing: boolean
           is_published: boolean
           material: string | null
           name: string
           price: number
+          production_name: string | null
           seo_description: string | null
+          seo_keywords: string[] | null
           seo_title: string | null
           short_description: string | null
+          similar_product_ids: string[]
           slug: string
+          status: Database["public"]["Enums"]["product_status"]
           stock_quantity: number
           subcategory_id: string | null
           type_id: string | null
           updated_at: string
         }
         Insert: {
+          ai_status?: Database["public"]["Enums"]["ai_asset_status"]
+          alt_text?: string | null
           app_keywords?: string[] | null
+          app_search_keywords?: string[] | null
           brand?: string | null
+          canonical_slug?: string | null
           category_id?: string | null
           code: string
           color?: string | null
           created_at?: string
+          deleted_at?: string | null
           family_id?: string | null
+          featured_feed?: boolean
+          featured_homepage?: boolean
           finish?: string | null
+          finish_name?: string | null
           generated_description?: string | null
           generated_installed_image?: string | null
           generated_studio_image?: string | null
+          hidden?: boolean
           id?: string
           image_url?: string | null
+          installation_context_id?: string | null
           is_ai_processing?: boolean
           is_published?: boolean
           material?: string | null
           name: string
           price?: number
+          production_name?: string | null
           seo_description?: string | null
+          seo_keywords?: string[] | null
           seo_title?: string | null
           short_description?: string | null
+          similar_product_ids?: string[]
           slug: string
+          status?: Database["public"]["Enums"]["product_status"]
           stock_quantity?: number
           subcategory_id?: string | null
           type_id?: string | null
           updated_at?: string
         }
         Update: {
+          ai_status?: Database["public"]["Enums"]["ai_asset_status"]
+          alt_text?: string | null
           app_keywords?: string[] | null
+          app_search_keywords?: string[] | null
           brand?: string | null
+          canonical_slug?: string | null
           category_id?: string | null
           code?: string
           color?: string | null
           created_at?: string
+          deleted_at?: string | null
           family_id?: string | null
+          featured_feed?: boolean
+          featured_homepage?: boolean
           finish?: string | null
+          finish_name?: string | null
           generated_description?: string | null
           generated_installed_image?: string | null
           generated_studio_image?: string | null
+          hidden?: boolean
           id?: string
           image_url?: string | null
+          installation_context_id?: string | null
           is_ai_processing?: boolean
           is_published?: boolean
           material?: string | null
           name?: string
           price?: number
+          production_name?: string | null
           seo_description?: string | null
+          seo_keywords?: string[] | null
           seo_title?: string | null
           short_description?: string | null
+          similar_product_ids?: string[]
           slug?: string
+          status?: Database["public"]["Enums"]["product_status"]
           stock_quantity?: number
           subcategory_id?: string | null
           type_id?: string | null
@@ -419,6 +464,13 @@ export type Database = {
             columns: ["family_id"]
             isOneToOne: false
             referencedRelation: "family_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_installation_context_id_fkey"
+            columns: ["installation_context_id"]
+            isOneToOne: false
+            referencedRelation: "installation_contexts"
             referencedColumns: ["id"]
           },
           {
@@ -575,6 +627,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_product_code: { Args: { _type_id: string }; Returns: string }
       get_my_roles: { Args: never; Returns: string[] }
       has_role: {
         Args: {
@@ -583,8 +636,13 @@ export type Database = {
         }
         Returns: boolean
       }
+      recompute_similar_products: {
+        Args: { _product_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
+      ai_asset_status: "idle" | "queued" | "processing" | "ready" | "failed"
       app_role: "admin" | "user" | "customer" | "super_admin"
       inquiry_pipeline_status:
         | "NEW"
@@ -593,6 +651,7 @@ export type Database = {
         | "QUOTED"
         | "CLOSED"
         | "LOST"
+      product_status: "draft" | "review" | "published" | "archived"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -720,6 +779,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      ai_asset_status: ["idle", "queued", "processing", "ready", "failed"],
       app_role: ["admin", "user", "customer", "super_admin"],
       inquiry_pipeline_status: [
         "NEW",
@@ -729,6 +789,7 @@ export const Constants = {
         "CLOSED",
         "LOST",
       ],
+      product_status: ["draft", "review", "published", "archived"],
     },
   },
 } as const

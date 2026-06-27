@@ -22,7 +22,11 @@ import { Route as CollectionIdRouteImport } from './routes/collection.$id'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as AuthenticatedAdminProductsRouteImport } from './routes/_authenticated/admin.products'
+import { Route as AuthenticatedAdminHierarchyRouteImport } from './routes/_authenticated/admin.hierarchy'
 import { Route as AuthenticatedAdminBusinessRouteImport } from './routes/_authenticated/admin.business'
+import { Route as AuthenticatedAdminProductsNewRouteImport } from './routes/_authenticated/admin.products.new'
+import { Route as AuthenticatedAdminProductsIdRouteImport } from './routes/_authenticated/admin.products.$id'
 
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
@@ -88,11 +92,35 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminProductsRoute =
+  AuthenticatedAdminProductsRouteImport.update({
+    id: '/products',
+    path: '/products',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminHierarchyRoute =
+  AuthenticatedAdminHierarchyRouteImport.update({
+    id: '/hierarchy',
+    path: '/hierarchy',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminBusinessRoute =
   AuthenticatedAdminBusinessRouteImport.update({
     id: '/business',
     path: '/business',
     getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminProductsNewRoute =
+  AuthenticatedAdminProductsNewRouteImport.update({
+    id: '/new',
+    path: '/new',
+    getParentRoute: () => AuthenticatedAdminProductsRoute,
+  } as any)
+const AuthenticatedAdminProductsIdRoute =
+  AuthenticatedAdminProductsIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedAdminProductsRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -108,7 +136,11 @@ export interface FileRoutesByFullPath {
   '/collection/$id': typeof CollectionIdRoute
   '/product/$slug': typeof ProductSlugRoute
   '/admin/business': typeof AuthenticatedAdminBusinessRoute
+  '/admin/hierarchy': typeof AuthenticatedAdminHierarchyRoute
+  '/admin/products': typeof AuthenticatedAdminProductsRouteWithChildren
   '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/admin/products/$id': typeof AuthenticatedAdminProductsIdRoute
+  '/admin/products/new': typeof AuthenticatedAdminProductsNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -122,7 +154,11 @@ export interface FileRoutesByTo {
   '/collection/$id': typeof CollectionIdRoute
   '/product/$slug': typeof ProductSlugRoute
   '/admin/business': typeof AuthenticatedAdminBusinessRoute
+  '/admin/hierarchy': typeof AuthenticatedAdminHierarchyRoute
+  '/admin/products': typeof AuthenticatedAdminProductsRouteWithChildren
   '/admin': typeof AuthenticatedAdminIndexRoute
+  '/admin/products/$id': typeof AuthenticatedAdminProductsIdRoute
+  '/admin/products/new': typeof AuthenticatedAdminProductsNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -139,7 +175,11 @@ export interface FileRoutesById {
   '/collection/$id': typeof CollectionIdRoute
   '/product/$slug': typeof ProductSlugRoute
   '/_authenticated/admin/business': typeof AuthenticatedAdminBusinessRoute
+  '/_authenticated/admin/hierarchy': typeof AuthenticatedAdminHierarchyRoute
+  '/_authenticated/admin/products': typeof AuthenticatedAdminProductsRouteWithChildren
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/_authenticated/admin/products/$id': typeof AuthenticatedAdminProductsIdRoute
+  '/_authenticated/admin/products/new': typeof AuthenticatedAdminProductsNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -156,7 +196,11 @@ export interface FileRouteTypes {
     | '/collection/$id'
     | '/product/$slug'
     | '/admin/business'
+    | '/admin/hierarchy'
+    | '/admin/products'
     | '/admin/'
+    | '/admin/products/$id'
+    | '/admin/products/new'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -170,7 +214,11 @@ export interface FileRouteTypes {
     | '/collection/$id'
     | '/product/$slug'
     | '/admin/business'
+    | '/admin/hierarchy'
+    | '/admin/products'
     | '/admin'
+    | '/admin/products/$id'
+    | '/admin/products/new'
   id:
     | '__root__'
     | '/'
@@ -186,7 +234,11 @@ export interface FileRouteTypes {
     | '/collection/$id'
     | '/product/$slug'
     | '/_authenticated/admin/business'
+    | '/_authenticated/admin/hierarchy'
+    | '/_authenticated/admin/products'
     | '/_authenticated/admin/'
+    | '/_authenticated/admin/products/$id'
+    | '/_authenticated/admin/products/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -294,6 +346,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/products': {
+      id: '/_authenticated/admin/products'
+      path: '/products'
+      fullPath: '/admin/products'
+      preLoaderRoute: typeof AuthenticatedAdminProductsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/hierarchy': {
+      id: '/_authenticated/admin/hierarchy'
+      path: '/hierarchy'
+      fullPath: '/admin/hierarchy'
+      preLoaderRoute: typeof AuthenticatedAdminHierarchyRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/business': {
       id: '/_authenticated/admin/business'
       path: '/business'
@@ -301,16 +367,50 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminBusinessRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/products/new': {
+      id: '/_authenticated/admin/products/new'
+      path: '/new'
+      fullPath: '/admin/products/new'
+      preLoaderRoute: typeof AuthenticatedAdminProductsNewRouteImport
+      parentRoute: typeof AuthenticatedAdminProductsRoute
+    }
+    '/_authenticated/admin/products/$id': {
+      id: '/_authenticated/admin/products/$id'
+      path: '/$id'
+      fullPath: '/admin/products/$id'
+      preLoaderRoute: typeof AuthenticatedAdminProductsIdRouteImport
+      parentRoute: typeof AuthenticatedAdminProductsRoute
+    }
   }
 }
 
+interface AuthenticatedAdminProductsRouteChildren {
+  AuthenticatedAdminProductsIdRoute: typeof AuthenticatedAdminProductsIdRoute
+  AuthenticatedAdminProductsNewRoute: typeof AuthenticatedAdminProductsNewRoute
+}
+
+const AuthenticatedAdminProductsRouteChildren: AuthenticatedAdminProductsRouteChildren =
+  {
+    AuthenticatedAdminProductsIdRoute: AuthenticatedAdminProductsIdRoute,
+    AuthenticatedAdminProductsNewRoute: AuthenticatedAdminProductsNewRoute,
+  }
+
+const AuthenticatedAdminProductsRouteWithChildren =
+  AuthenticatedAdminProductsRoute._addFileChildren(
+    AuthenticatedAdminProductsRouteChildren,
+  )
+
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminBusinessRoute: typeof AuthenticatedAdminBusinessRoute
+  AuthenticatedAdminHierarchyRoute: typeof AuthenticatedAdminHierarchyRoute
+  AuthenticatedAdminProductsRoute: typeof AuthenticatedAdminProductsRouteWithChildren
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminBusinessRoute: AuthenticatedAdminBusinessRoute,
+  AuthenticatedAdminHierarchyRoute: AuthenticatedAdminHierarchyRoute,
+  AuthenticatedAdminProductsRoute: AuthenticatedAdminProductsRouteWithChildren,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
 }
 
