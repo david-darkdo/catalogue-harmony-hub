@@ -126,9 +126,9 @@ function Section({
   parents?: Row[];
   parentKey?: string;
   parentLabel?: string;
-  onCreate: (name: string, parent_id?: string) => Promise<void>;
-  onUpdate: (r: Row) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
+  onCreate: (name: string, parent_id?: string) => Promise<unknown>;
+  onUpdate: (r: Row) => Promise<unknown>;
+  onDelete: (id: string) => Promise<unknown>;
   renderExtra?: (r: Row, set: (r: Row) => void) => React.ReactNode;
   extras?: any;
 }) {
