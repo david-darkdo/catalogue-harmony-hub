@@ -19,9 +19,19 @@ export type ProductRow = {
   material: string | null;
   finish: string | null;
   app_keywords: string[] | null;
+  featured_feed?: boolean | null;
+  featured_homepage?: boolean | null;
 };
 
 export type TaxonomyNode = { id: string; name: string; slug: string };
+
+const PRODUCT_FIELDS =
+  "id,slug,name,code,price,brand,image_url,generated_studio_image,generated_installed_image,short_description,family_id,type_id,category_id,subcategory_id,color,material,finish,app_keywords,featured_feed,featured_homepage";
+
+/** Customer-facing visibility: published, not hidden, not soft-deleted. */
+function applyPublicFilters<T extends { eq: Function; is: Function }>(q: T): T {
+  return (q as any).eq("status", "published").eq("hidden", false).is("deleted_at", null);
+}
 
 export async function fetchTaxonomy() {
   const [types, categories, subcategories] = await Promise.all([
@@ -47,12 +57,11 @@ export type FeedFilters = {
 };
 
 export async function fetchFeedProducts(filters: FeedFilters): Promise<ProductRow[]> {
-  let query = supabase
-    .from("products")
-    .select(
-      "id,slug,name,code,price,brand,image_url,generated_studio_image,generated_installed_image,short_description,family_id,type_id,category_id,subcategory_id,color,material,finish,app_keywords",
-    )
-    .eq("is_published", true)
+  let query = applyPublicFilters(
+    supabase.from("products").select(PRODUCT_FIELDS),
+  )
+    // Featured-feed items pinned to the top
+    .order("featured_feed", { ascending: false } as any)
     .order("created_at", { ascending: false })
     .limit(60);
 
@@ -95,31 +104,53 @@ export async function fetchFeedProducts(filters: FeedFilters): Promise<ProductRo
   }
   const { data, error } = await query;
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []) as ProductRow[];
+}
+
+export async function fetchHomepageFeatured(): Promise<ProductRow[]> {
+  const { data, error } = await applyPublicFilters(
+    supabase.from("products").select(PRODUCT_FIELDS),
+  )
+    .eq("featured_homepage", true)
+    .order("created_at", { ascending: false })
+    .limit(8);
+  if (error) throw error;
+  return (data ?? []) as ProductRow[];
 }
 
 export async function fetchProductBySlug(slug: string) {
-  const { data, error } = await supabase
-    .from("products")
-    .select("*")
+  const { data, error } = await applyPublicFilters(
+    supabase.from("products").select("*"),
+  )
     .eq("slug", slug)
-    .eq("is_published", true)
     .maybeSingle();
   if (error) throw error;
   return data;
 }
 
-export async function fetchRelatedProducts(familyId: string | null, excludeId: string) {
-  if (!familyId) return [];
-  const { data, error } = await supabase
-    .from("products")
-    .select(
-      "id,slug,name,code,price,brand,image_url,generated_studio_image,generated_installed_image,short_description,family_id,type_id,category_id,subcategory_id,color,material,finish,app_keywords",
+export async function fetchRelatedProducts(
+  familyId: string | null,
+  excludeId: string,
+  similarIds?: string[] | null,
+) {
+  // Prefer pre-computed similar list when available.
+  if (similarIds && similarIds.length) {
+    const { data, error } = await applyPublicFilters(
+      supabase.from("products").select(PRODUCT_FIELDS),
     )
-    .eq("is_published", true)
+      .in("id", similarIds)
+      .neq("id", excludeId)
+      .limit(8);
+    if (error) throw error;
+    if ((data ?? []).length) return data as ProductRow[];
+  }
+  if (!familyId) return [];
+  const { data, error } = await applyPublicFilters(
+    supabase.from("products").select(PRODUCT_FIELDS),
+  )
     .eq("family_id", familyId)
     .neq("id", excludeId)
-    .limit(6);
+    .limit(8);
   if (error) throw error;
   return (data ?? []) as ProductRow[];
 }
