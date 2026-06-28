@@ -198,6 +198,143 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_notes: {
+        Row: {
+          admin_id: string | null
+          created_at: string
+          customer_id: string
+          id: string
+          note: string
+          note_type: Database["public"]["Enums"]["customer_note_type"]
+        }
+        Insert: {
+          admin_id?: string | null
+          created_at?: string
+          customer_id: string
+          id?: string
+          note: string
+          note_type?: Database["public"]["Enums"]["customer_note_type"]
+        }
+        Update: {
+          admin_id?: string | null
+          created_at?: string
+          customer_id?: string
+          id?: string
+          note?: string
+          note_type?: Database["public"]["Enums"]["customer_note_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_notes_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_notes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_campaign_logs: {
+        Row: {
+          campaign_id: string
+          error: string | null
+          id: string
+          recipient_email: string | null
+          sent_at: string
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          campaign_id: string
+          error?: string | null
+          id?: string
+          recipient_email?: string | null
+          sent_at?: string
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          error?: string | null
+          id?: string
+          recipient_email?: string | null
+          sent_at?: string
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_campaign_logs_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "email_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_campaign_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_campaigns: {
+        Row: {
+          banner_url: string | null
+          body: string
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          scheduled_at: string | null
+          status: Database["public"]["Enums"]["email_campaign_status"]
+          subject: string
+          target_segment: string
+          updated_at: string
+        }
+        Insert: {
+          banner_url?: string | null
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          scheduled_at?: string | null
+          status?: Database["public"]["Enums"]["email_campaign_status"]
+          subject: string
+          target_segment?: string
+          updated_at?: string
+        }
+        Update: {
+          banner_url?: string | null
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          scheduled_at?: string | null
+          status?: Database["public"]["Enums"]["email_campaign_status"]
+          subject?: string
+          target_segment?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_campaigns_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       family_groups: {
         Row: {
           created_at: string
@@ -496,6 +633,8 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          tags: string[]
+          vip_status: boolean
         }
         Insert: {
           auth_id: string
@@ -503,6 +642,8 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          tags?: string[]
+          vip_status?: boolean
         }
         Update: {
           auth_id?: string
@@ -510,6 +651,8 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          tags?: string[]
+          vip_status?: boolean
         }
         Relationships: []
       }
@@ -547,18 +690,21 @@ export type Database = {
       }
       user_roles: {
         Row: {
+          account_status: Database["public"]["Enums"]["account_status"]
           created_at: string
           id: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
+          account_status?: Database["public"]["Enums"]["account_status"]
           created_at?: string
           id?: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
+          account_status?: Database["public"]["Enums"]["account_status"]
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
@@ -642,8 +788,17 @@ export type Database = {
       }
     }
     Enums: {
+      account_status: "ACTIVE" | "SUSPENDED" | "BLOCKED"
       ai_asset_status: "idle" | "queued" | "processing" | "ready" | "failed"
       app_role: "admin" | "user" | "customer" | "super_admin"
+      customer_note_type: "GENERAL" | "SALES" | "SUPPORT" | "VIP" | "FOLLOW_UP"
+      email_campaign_status:
+        | "DRAFT"
+        | "READY"
+        | "SENDING"
+        | "SENT"
+        | "FAILED"
+        | "ARCHIVED"
       inquiry_pipeline_status:
         | "NEW"
         | "CONTACTED"
@@ -779,8 +934,18 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      account_status: ["ACTIVE", "SUSPENDED", "BLOCKED"],
       ai_asset_status: ["idle", "queued", "processing", "ready", "failed"],
       app_role: ["admin", "user", "customer", "super_admin"],
+      customer_note_type: ["GENERAL", "SALES", "SUPPORT", "VIP", "FOLLOW_UP"],
+      email_campaign_status: [
+        "DRAFT",
+        "READY",
+        "SENDING",
+        "SENT",
+        "FAILED",
+        "ARCHIVED",
+      ],
       inquiry_pipeline_status: [
         "NEW",
         "CONTACTED",
