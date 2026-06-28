@@ -205,6 +205,9 @@ function AdminPage() {
         <p className="text-sm text-muted-foreground">Manage products, contact info & inquiries.</p>
       </div>
 
+      <CustomerAnalyticsCards />
+
+
       <section className="rounded-xl border border-border bg-card p-5">
         <h2 className="flex items-center gap-2 font-display text-lg font-semibold">
           <Search className="h-4 w-4 text-primary" /> Product Code Search
