@@ -54,6 +54,9 @@ function AdminLayout() {
     { to: "/admin" as const, label: "Operations", icon: LayoutDashboard, active: pathname === "/admin" },
     { to: "/admin/products" as const, label: "Products", icon: Package, active: pathname.startsWith("/admin/products") },
     { to: "/admin/hierarchy" as const, label: "Hierarchy", icon: Layers, active: pathname.startsWith("/admin/hierarchy") },
+    { to: "/admin/customers" as const, label: "Customers", icon: Users, active: pathname.startsWith("/admin/customers") },
+    { to: "/admin/collections" as const, label: "Collections", icon: FolderHeart, active: pathname.startsWith("/admin/collections") },
+    { to: "/admin/email" as const, label: "Email", icon: Mail, active: pathname.startsWith("/admin/email") },
     { to: "/admin/business" as const, label: "Business", icon: Briefcase, active: pathname.startsWith("/admin/business") },
   ];
 
