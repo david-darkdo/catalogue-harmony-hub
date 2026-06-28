@@ -3,7 +3,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
-import { Search, LayoutDashboard, Briefcase, Package, Layers } from "lucide-react";
+import { Search, LayoutDashboard, Briefcase, Package, Layers, Users, FolderHeart, Mail } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Admin — Stoneworks" }] }),
