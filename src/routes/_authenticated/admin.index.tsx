@@ -205,6 +205,9 @@ function AdminPage() {
         <p className="text-sm text-muted-foreground">Manage products, contact info & inquiries.</p>
       </div>
 
+      <CustomerAnalyticsCards />
+
+
       <section className="rounded-xl border border-border bg-card p-5">
         <h2 className="flex items-center gap-2 font-display text-lg font-semibold">
           <Search className="h-4 w-4 text-primary" /> Product Code Search
@@ -347,5 +350,48 @@ function AdminPage() {
         </ul>
       </section>
     </div>
+  );
+}
+
+function CustomerAnalyticsCards() {
+  const [stats, setStats] = useState<Record<string, number>>({});
+  useEffect(() => {
+    (async () => {
+      const [{ data: profs }, { data: roles }, { data: colls }, { data: inqs }, { data: camps }] = await Promise.all([
+        supabase.from("profiles").select("email,vip_status"),
+        supabase.from("user_roles").select("account_status"),
+        supabase.from("collections").select("id"),
+        supabase.from("whatsapp_inquiries").select("id"),
+        supabase.from("email_campaigns").select("status"),
+      ]);
+      const total = profs?.length ?? 0;
+      const google = (profs ?? []).filter((p: any) => p.email && /@gmail\./i.test(p.email)).length;
+      const email = total - google;
+      const active = (roles ?? []).filter((r: any) => (r.account_status ?? "ACTIVE") === "ACTIVE").length;
+      const suspended = (roles ?? []).filter((r: any) => r.account_status === "SUSPENDED" || r.account_status === "BLOCKED").length;
+      const vip = (profs ?? []).filter((p: any) => p.vip_status).length;
+      const campsTotal = camps?.length ?? 0;
+      const campsSent = (camps ?? []).filter((c: any) => c.status === "SENT").length;
+      setStats({ total, google, email, active, suspended, vip, colls: colls?.length ?? 0, inqs: inqs?.length ?? 0, campsTotal, campsSent });
+    })();
+  }, []);
+  const cards = [
+    ["Total users", stats.total], ["Google", stats.google], ["Email", stats.email],
+    ["Active", stats.active], ["Suspended", stats.suspended], ["VIP", stats.vip],
+    ["Collections", stats.colls], ["WhatsApp inquiries", stats.inqs],
+    ["Campaigns created", stats.campsTotal], ["Campaigns sent", stats.campsSent],
+  ] as const;
+  return (
+    <section>
+      <h2 className="mb-2 font-display text-sm font-semibold uppercase tracking-wide text-muted-foreground">Customer Analytics</h2>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
+        {cards.map(([label, v]) => (
+          <div key={label} className="rounded-lg border border-border bg-card p-3">
+            <div className="text-[10px] uppercase text-muted-foreground">{label}</div>
+            <div className="mt-1 text-xl font-semibold">{v ?? 0}</div>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
