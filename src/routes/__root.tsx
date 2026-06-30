@@ -102,6 +102,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Stoneworks — Luxury Building Materials" },
+      { name: "description", content: "Foundation Schema initializes a Supabase/PostgreSQL database for product catalog management and user interactions." },
+      { property: "og:description", content: "Foundation Schema initializes a Supabase/PostgreSQL database for product catalog management and user interactions." },
+      { name: "twitter:description", content: "Foundation Schema initializes a Supabase/PostgreSQL database for product catalog management and user interactions." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/0ba69082-2120-4fe0-8bd9-30559a2bcb96/id-preview-5c7dab40--90df874f-a60f-4339-93a0-e225dd750696.lovable.app-1782681475617.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/0ba69082-2120-4fe0-8bd9-30559a2bcb96/id-preview-5c7dab40--90df874f-a60f-4339-93a0-e225dd750696.lovable.app-1782681475617.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
