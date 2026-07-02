@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { enqueueAiPipeline } from "@/lib/pipeline";
 
 export const Route = createFileRoute("/_authenticated/admin/products/new")({
   component: WizardPage,
@@ -33,6 +34,7 @@ function WizardPage() {
     code: "",
     production_name: "",
     finish_name: "",
+    size: "",
     price: "0",
     image_url: "",
     status: "draft",
