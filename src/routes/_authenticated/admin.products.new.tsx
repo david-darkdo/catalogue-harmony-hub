@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { enqueueAiPipeline } from "@/lib/pipeline";
 
 export const Route = createFileRoute("/_authenticated/admin/products/new")({
   component: WizardPage,
@@ -33,6 +34,7 @@ function WizardPage() {
     code: "",
     production_name: "",
     finish_name: "",
+    size: "",
     price: "0",
     image_url: "",
     status: "draft",
@@ -95,12 +97,14 @@ function WizardPage() {
       subcategory_id,
       family_id,
       name: form.name.trim(),
-      code: form.code.trim() || null, // trigger fills if blank
+      code: form.code.trim() || null,
       production_name: form.production_name.trim() || null,
       finish_name: form.finish_name.trim() || null,
+      size: form.size.trim() || null,
       price: Number(form.price) || 0,
       image_url: form.image_url.trim() || null,
       status: form.status as any,
+      processing_state: "pending" as any,
       featured_homepage: form.featured_homepage,
       featured_feed: form.featured_feed,
       hidden: form.hidden,
@@ -109,9 +113,12 @@ function WizardPage() {
       is_published: form.status === "published",
     };
     const { data, error } = await supabase.from("products").insert(payload as any).select("id").single();
+    if (error) { setSaving(false); return toast.error(error.message); }
+    if (data?.id) {
+      try { await enqueueAiPipeline(data.id); } catch (e: any) { toast.error("Pipeline queue failed: " + e.message); }
+    }
     setSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success("Product created");
+    toast.success("Product created & AI pipeline queued");
     if (data?.id) navigate({ to: "/admin/products/$id", params: { id: data.id } });
   };
 
@@ -149,6 +156,7 @@ function WizardPage() {
             <Field label="Product Code (editable)" value={form.code} onChange={(v) => setForm({ ...form, code: v })} placeholder={previewCode} />
             <Field label="Production Name" value={form.production_name} onChange={(v) => setForm({ ...form, production_name: v })} />
             <Field label="Finish Name" value={form.finish_name} onChange={(v) => setForm({ ...form, finish_name: v })} />
+            <Field label="Size (e.g. 60×60, 30x60, 600×1200 mm)" value={form.size} onChange={(v) => setForm({ ...form, size: v })} placeholder="60×60" />
             <Field label="Price" type="number" value={form.price} onChange={(v) => setForm({ ...form, price: v })} />
             <Field label="Image URL" value={form.image_url} onChange={(v) => setForm({ ...form, image_url: v })} placeholder="https://…" />
             <label className="block text-sm">

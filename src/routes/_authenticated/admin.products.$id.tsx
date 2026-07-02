@@ -2,7 +2,8 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Sparkles, Trash2 } from "lucide-react";
+import { ArrowLeft, Sparkles, Trash2, Activity } from "lucide-react";
+import { regenerateWithHashGuard } from "@/lib/pipeline";
 
 export const Route = createFileRoute("/_authenticated/admin/products/$id")({
   component: EditPage,
@@ -69,28 +70,15 @@ function EditPage() {
   };
 
   const regenAi = async () => {
-    const { error } = await supabase
-      .from("products")
-      .update({ ai_status: "queued", is_ai_processing: true } as any)
-      .eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success("AI regeneration queued");
-    // Build payload that would be sent to the AI engine
-    const ctx = contexts.find((c) => c.id === p.installation_context_id)?.name ?? "default";
-    console.log("[AI workflow payload]", {
-      product_id: id,
-      product_type: types.find((t) => t.id === p.type_id)?.name,
-      category: cats.find((c) => c.id === p.category_id)?.name,
-      subcategory: subs.find((s) => s.id === p.subcategory_id)?.name,
-      family_group: families.find((f) => f.id === p.family_id)?.name,
-      product_name: p.name,
-      production_name: p.production_name,
-      finish_name: p.finish_name,
-      price: p.price,
-      installation_context: ctx,
-      uploaded_image: p.image_url,
-    });
-    load();
+    try {
+      const res = await regenerateWithHashGuard(id);
+      if (res.skipped) {
+        if (!confirm(res.reason + "\n\nRegenerate anyway?")) return;
+        await regenerateWithHashGuard(id, { force: true });
+      }
+      toast.success("AI pipeline queued");
+      load();
+    } catch (e: any) { toast.error(e.message ?? "Failed"); }
   };
 
   const arrToStr = (v: any) => (Array.isArray(v) ? v.join(", ") : v ?? "");
@@ -105,6 +93,7 @@ function EditPage() {
         <h1 className="font-display text-2xl font-semibold">{p.name}</h1>
         <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-mono">{p.code}</span>
         <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] uppercase tracking-wider text-primary">{p.status}</span>
+        <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] uppercase tracking-wider text-muted-foreground"><Activity className="h-3 w-3" />{p.processing_state ?? "draft"} · v{p.generation_version ?? 0}</span>
         <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] uppercase tracking-wider text-muted-foreground">AI: {p.ai_status}</span>
         <button onClick={save} disabled={saving} className="ml-auto rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60">
           {saving ? "Saving…" : "Save changes"}
@@ -119,6 +108,7 @@ function EditPage() {
           <F label="Code"><input value={p.code ?? ""} onChange={(e) => set("code", e.target.value)} className={`${inp} font-mono`} /></F>
           <F label="Production Name"><input value={p.production_name ?? ""} onChange={(e) => set("production_name", e.target.value)} className={inp} /></F>
           <F label="Finish Name"><input value={p.finish_name ?? ""} onChange={(e) => set("finish_name", e.target.value)} className={inp} /></F>
+          <F label="Size (auto-normalized)"><input value={p.size ?? ""} onChange={(e) => set("size", e.target.value)} className={inp} placeholder="60×60" /></F>
           <F label="Price"><input type="number" value={p.price ?? 0} onChange={(e) => set("price", e.target.value)} className={inp} /></F>
           <F label="Short Description"><textarea value={p.short_description ?? ""} onChange={(e) => set("short_description", e.target.value)} className={`${inp} min-h-[80px]`} /></F>
         </section>
