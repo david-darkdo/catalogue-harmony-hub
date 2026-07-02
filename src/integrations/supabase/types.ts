@@ -14,6 +14,62 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_jobs: {
+        Row: {
+          attempts: number
+          completed_at: string | null
+          created_at: string
+          error_log: Json | null
+          id: string
+          job_dependency: Database["public"]["Enums"]["ai_job_type"] | null
+          job_type: Database["public"]["Enums"]["ai_job_type"]
+          payload: Json | null
+          product_id: string
+          result: Json | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["ai_job_status"]
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          error_log?: Json | null
+          id?: string
+          job_dependency?: Database["public"]["Enums"]["ai_job_type"] | null
+          job_type: Database["public"]["Enums"]["ai_job_type"]
+          payload?: Json | null
+          product_id: string
+          result?: Json | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["ai_job_status"]
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          error_log?: Json | null
+          id?: string
+          job_dependency?: Database["public"]["Enums"]["ai_job_type"] | null
+          job_type?: Database["public"]["Enums"]["ai_job_type"]
+          payload?: Json | null
+          product_id?: string
+          result?: Json | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["ai_job_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_jobs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_prompt_templates: {
         Row: {
           created_at: string
@@ -397,6 +453,50 @@ export type Database = {
         }
         Relationships: []
       }
+      product_assets: {
+        Row: {
+          asset_type: Database["public"]["Enums"]["product_asset_type"]
+          asset_url: string
+          created_at: string
+          generated_by_ai: boolean
+          generation_version: number
+          id: string
+          is_primary: boolean
+          metadata: Json | null
+          product_id: string
+        }
+        Insert: {
+          asset_type: Database["public"]["Enums"]["product_asset_type"]
+          asset_url: string
+          created_at?: string
+          generated_by_ai?: boolean
+          generation_version?: number
+          id?: string
+          is_primary?: boolean
+          metadata?: Json | null
+          product_id: string
+        }
+        Update: {
+          asset_type?: Database["public"]["Enums"]["product_asset_type"]
+          asset_url?: string
+          created_at?: string
+          generated_by_ai?: boolean
+          generation_version?: number
+          id?: string
+          is_primary?: boolean
+          metadata?: Json | null
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_assets_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_types: {
         Row: {
           code_prefix: string
@@ -464,6 +564,7 @@ export type Database = {
       products: {
         Row: {
           ai_status: Database["public"]["Enums"]["ai_asset_status"]
+          ai_understanding: Json | null
           alt_text: string | null
           app_keywords: string[] | null
           app_search_keywords: string[] | null
@@ -474,6 +575,7 @@ export type Database = {
           color: string | null
           created_at: string
           deleted_at: string | null
+          error_log: Json | null
           family_id: string | null
           featured_feed: boolean
           featured_homepage: boolean
@@ -482,21 +584,27 @@ export type Database = {
           generated_description: string | null
           generated_installed_image: string | null
           generated_studio_image: string | null
+          generation_hash: string | null
+          generation_version: number
           hidden: boolean
           id: string
           image_url: string | null
           installation_context_id: string | null
           is_ai_processing: boolean
           is_published: boolean
+          last_processed_at: string | null
           material: string | null
           name: string
           price: number
+          processing_state: Database["public"]["Enums"]["product_processing_state"]
           production_name: string | null
+          retry_count: number
           seo_description: string | null
           seo_keywords: string[] | null
           seo_title: string | null
           short_description: string | null
           similar_product_ids: string[]
+          size: string | null
           slug: string
           status: Database["public"]["Enums"]["product_status"]
           stock_quantity: number
@@ -506,6 +614,7 @@ export type Database = {
         }
         Insert: {
           ai_status?: Database["public"]["Enums"]["ai_asset_status"]
+          ai_understanding?: Json | null
           alt_text?: string | null
           app_keywords?: string[] | null
           app_search_keywords?: string[] | null
@@ -516,6 +625,7 @@ export type Database = {
           color?: string | null
           created_at?: string
           deleted_at?: string | null
+          error_log?: Json | null
           family_id?: string | null
           featured_feed?: boolean
           featured_homepage?: boolean
@@ -524,21 +634,27 @@ export type Database = {
           generated_description?: string | null
           generated_installed_image?: string | null
           generated_studio_image?: string | null
+          generation_hash?: string | null
+          generation_version?: number
           hidden?: boolean
           id?: string
           image_url?: string | null
           installation_context_id?: string | null
           is_ai_processing?: boolean
           is_published?: boolean
+          last_processed_at?: string | null
           material?: string | null
           name: string
           price?: number
+          processing_state?: Database["public"]["Enums"]["product_processing_state"]
           production_name?: string | null
+          retry_count?: number
           seo_description?: string | null
           seo_keywords?: string[] | null
           seo_title?: string | null
           short_description?: string | null
           similar_product_ids?: string[]
+          size?: string | null
           slug: string
           status?: Database["public"]["Enums"]["product_status"]
           stock_quantity?: number
@@ -548,6 +664,7 @@ export type Database = {
         }
         Update: {
           ai_status?: Database["public"]["Enums"]["ai_asset_status"]
+          ai_understanding?: Json | null
           alt_text?: string | null
           app_keywords?: string[] | null
           app_search_keywords?: string[] | null
@@ -558,6 +675,7 @@ export type Database = {
           color?: string | null
           created_at?: string
           deleted_at?: string | null
+          error_log?: Json | null
           family_id?: string | null
           featured_feed?: boolean
           featured_homepage?: boolean
@@ -566,21 +684,27 @@ export type Database = {
           generated_description?: string | null
           generated_installed_image?: string | null
           generated_studio_image?: string | null
+          generation_hash?: string | null
+          generation_version?: number
           hidden?: boolean
           id?: string
           image_url?: string | null
           installation_context_id?: string | null
           is_ai_processing?: boolean
           is_published?: boolean
+          last_processed_at?: string | null
           material?: string | null
           name?: string
           price?: number
+          processing_state?: Database["public"]["Enums"]["product_processing_state"]
           production_name?: string | null
+          retry_count?: number
           seo_description?: string | null
           seo_keywords?: string[] | null
           seo_title?: string | null
           short_description?: string | null
           similar_product_ids?: string[]
+          size?: string | null
           slug?: string
           status?: Database["public"]["Enums"]["product_status"]
           stock_quantity?: number
@@ -655,6 +779,44 @@ export type Database = {
           vip_status?: boolean
         }
         Relationships: []
+      }
+      search_index: {
+        Row: {
+          combined_search_text: string
+          master_document: Json
+          normalized_size: string | null
+          product_id: string
+          search_aliases: string[]
+          search_vector: unknown
+          updated_at: string
+        }
+        Insert: {
+          combined_search_text?: string
+          master_document?: Json
+          normalized_size?: string | null
+          product_id: string
+          search_aliases?: string[]
+          search_vector?: unknown
+          updated_at?: string
+        }
+        Update: {
+          combined_search_text?: string
+          master_document?: Json
+          normalized_size?: string | null
+          product_id?: string
+          search_aliases?: string[]
+          search_vector?: unknown
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "search_index_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subcategories: {
         Row: {
@@ -773,7 +935,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      compute_product_hash: {
+        Args: {
+          _category_id: string
+          _finish: string
+          _manufacturer: string
+          _size: string
+          _type_id: string
+        }
+        Returns: string
+      }
+      enqueue_ai_pipeline: { Args: { _product_id: string }; Returns: undefined }
       generate_product_code: { Args: { _type_id: string }; Returns: string }
+      generate_size_aliases: { Args: { _size: string }; Returns: string[] }
       get_my_roles: { Args: never; Returns: string[] }
       has_role: {
         Args: {
@@ -782,14 +956,27 @@ export type Database = {
         }
         Returns: boolean
       }
+      rebuild_search_index: {
+        Args: { _product_id: string }
+        Returns: undefined
+      }
       recompute_similar_products: {
         Args: { _product_id: string }
         Returns: undefined
       }
+      retry_ai_job: { Args: { _job_id: string }; Returns: undefined }
     }
     Enums: {
       account_status: "ACTIVE" | "SUSPENDED" | "BLOCKED"
       ai_asset_status: "idle" | "queued" | "processing" | "ready" | "failed"
+      ai_job_status: "pending" | "processing" | "success" | "failed" | "retry"
+      ai_job_type:
+        | "understanding"
+        | "search_index"
+        | "seo"
+        | "description"
+        | "image_generation"
+        | "faq_generation"
       app_role: "admin" | "user" | "customer" | "super_admin"
       customer_note_type: "GENERAL" | "SALES" | "SUPPORT" | "VIP" | "FOLLOW_UP"
       email_campaign_status:
@@ -806,6 +993,14 @@ export type Database = {
         | "QUOTED"
         | "CLOSED"
         | "LOST"
+      product_asset_type: "original" | "studio" | "installed" | "gallery"
+      product_processing_state:
+        | "draft"
+        | "pending"
+        | "processing"
+        | "completed"
+        | "error"
+        | "archived"
       product_status: "draft" | "review" | "published" | "archived"
     }
     CompositeTypes: {
@@ -936,6 +1131,15 @@ export const Constants = {
     Enums: {
       account_status: ["ACTIVE", "SUSPENDED", "BLOCKED"],
       ai_asset_status: ["idle", "queued", "processing", "ready", "failed"],
+      ai_job_status: ["pending", "processing", "success", "failed", "retry"],
+      ai_job_type: [
+        "understanding",
+        "search_index",
+        "seo",
+        "description",
+        "image_generation",
+        "faq_generation",
+      ],
       app_role: ["admin", "user", "customer", "super_admin"],
       customer_note_type: ["GENERAL", "SALES", "SUPPORT", "VIP", "FOLLOW_UP"],
       email_campaign_status: [
@@ -953,6 +1157,15 @@ export const Constants = {
         "QUOTED",
         "CLOSED",
         "LOST",
+      ],
+      product_asset_type: ["original", "studio", "installed", "gallery"],
+      product_processing_state: [
+        "draft",
+        "pending",
+        "processing",
+        "completed",
+        "error",
+        "archived",
       ],
       product_status: ["draft", "review", "published", "archived"],
     },
