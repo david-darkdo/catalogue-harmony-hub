@@ -156,6 +156,7 @@ function WizardPage() {
             <Field label="Product Code (editable)" value={form.code} onChange={(v) => setForm({ ...form, code: v })} placeholder={previewCode} />
             <Field label="Production Name" value={form.production_name} onChange={(v) => setForm({ ...form, production_name: v })} />
             <Field label="Finish Name" value={form.finish_name} onChange={(v) => setForm({ ...form, finish_name: v })} />
+            <Field label="Size (e.g. 60×60, 30x60, 600×1200 mm)" value={form.size} onChange={(v) => setForm({ ...form, size: v })} placeholder="60×60" />
             <Field label="Price" type="number" value={form.price} onChange={(v) => setForm({ ...form, price: v })} />
             <Field label="Image URL" value={form.image_url} onChange={(v) => setForm({ ...form, image_url: v })} placeholder="https://…" />
             <label className="block text-sm">
