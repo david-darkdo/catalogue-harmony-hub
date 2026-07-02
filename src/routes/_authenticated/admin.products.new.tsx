@@ -97,12 +97,14 @@ function WizardPage() {
       subcategory_id,
       family_id,
       name: form.name.trim(),
-      code: form.code.trim() || null, // trigger fills if blank
+      code: form.code.trim() || null,
       production_name: form.production_name.trim() || null,
       finish_name: form.finish_name.trim() || null,
+      size: form.size.trim() || null,
       price: Number(form.price) || 0,
       image_url: form.image_url.trim() || null,
       status: form.status as any,
+      processing_state: "pending" as any,
       featured_homepage: form.featured_homepage,
       featured_feed: form.featured_feed,
       hidden: form.hidden,
@@ -111,9 +113,12 @@ function WizardPage() {
       is_published: form.status === "published",
     };
     const { data, error } = await supabase.from("products").insert(payload as any).select("id").single();
+    if (error) { setSaving(false); return toast.error(error.message); }
+    if (data?.id) {
+      try { await enqueueAiPipeline(data.id); } catch (e: any) { toast.error("Pipeline queue failed: " + e.message); }
+    }
     setSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success("Product created");
+    toast.success("Product created & AI pipeline queued");
     if (data?.id) navigate({ to: "/admin/products/$id", params: { id: data.id } });
   };
 
