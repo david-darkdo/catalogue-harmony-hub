@@ -2,13 +2,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil } from "lucide-react";
+import { Plus, Trash2, Pencil, Archive, ArchiveRestore } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/hierarchy")({
   component: HierarchyPage,
 });
 
-type Row = { id: string; name: string; slug?: string; type_id?: string; category_id?: string; subcategory_id?: string; code_prefix?: string; installation_context_id?: string };
+type Row = { id: string; name: string; slug?: string; type_id?: string; category_id?: string; subcategory_id?: string; code_prefix?: string; installation_context_id?: string; is_archived?: boolean };
 type Ctx = { id: string; name: string };
 
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -22,10 +22,10 @@ function HierarchyPage() {
 
   const load = async () => {
     const [t, c, s, f, ic] = await Promise.all([
-      supabase.from("product_types").select("id,name,slug,code_prefix,installation_context_id").order("name"),
-      supabase.from("categories").select("id,name,slug,type_id").order("name"),
-      supabase.from("subcategories").select("id,name,slug,category_id").order("name"),
-      supabase.from("family_groups").select("id,name,slug,subcategory_id").order("name"),
+      supabase.from("product_types").select("id,name,slug,code_prefix,installation_context_id,is_archived").order("name"),
+      supabase.from("categories").select("id,name,slug,type_id,is_archived").order("name"),
+      supabase.from("subcategories").select("id,name,slug,category_id,is_archived").order("name"),
+      supabase.from("family_groups").select("id,name,slug,subcategory_id,is_archived").order("name"),
       supabase.from("installation_contexts").select("id,name").order("name"),
     ]);
     setTypes((t.data ?? []) as any);
@@ -60,6 +60,7 @@ function HierarchyPage() {
           if (error) toast.error(error.message); else { toast.success("Saved"); load(); }
         }}
         onDelete={async (id) => { const { error } = await supabase.from("product_types").delete().eq("id", id); if (error) toast.error(error.message); else { toast.success("Deleted"); load(); } }}
+        onArchive={async (r) => { const { error } = await supabase.from("product_types").update({ is_archived: !r.is_archived } as any).eq("id", r.id); if (error) toast.error(error.message); else { toast.success(r.is_archived ? "Restored" : "Archived"); load(); } }}
         renderExtra={(r, set) => (
           <>
             <input value={r.code_prefix ?? ""} onChange={(e) => set({ ...r, code_prefix: e.target.value.toUpperCase() })} placeholder="PREFIX" className="w-20 rounded-md border border-border bg-background px-2 py-1 text-xs font-mono uppercase" />
@@ -83,6 +84,7 @@ function HierarchyPage() {
         }}
         onUpdate={async (r) => { const { error } = await supabase.from("categories").update({ name: r.name, slug: r.slug, type_id: r.type_id } as any).eq("id", r.id); if (error) toast.error(error.message); else { toast.success("Saved"); load(); } }}
         onDelete={async (id) => { const { error } = await supabase.from("categories").delete().eq("id", id); if (error) toast.error(error.message); else { toast.success("Deleted"); load(); } }}
+        onArchive={async (r) => { const { error } = await supabase.from("categories").update({ is_archived: !r.is_archived } as any).eq("id", r.id); if (error) toast.error(error.message); else { toast.success(r.is_archived ? "Restored" : "Archived"); load(); } }}
       />
 
       <Section
@@ -98,6 +100,7 @@ function HierarchyPage() {
         }}
         onUpdate={async (r) => { const { error } = await supabase.from("subcategories").update({ name: r.name, slug: r.slug, category_id: r.category_id } as any).eq("id", r.id); if (error) toast.error(error.message); else { toast.success("Saved"); load(); } }}
         onDelete={async (id) => { const { error } = await supabase.from("subcategories").delete().eq("id", id); if (error) toast.error(error.message); else { toast.success("Deleted"); load(); } }}
+        onArchive={async (r) => { const { error } = await supabase.from("subcategories").update({ is_archived: !r.is_archived } as any).eq("id", r.id); if (error) toast.error(error.message); else { toast.success(r.is_archived ? "Restored" : "Archived"); load(); } }}
       />
 
       <Section
@@ -113,13 +116,14 @@ function HierarchyPage() {
         }}
         onUpdate={async (r) => { const { error } = await supabase.from("family_groups").update({ name: r.name, slug: r.slug, subcategory_id: r.subcategory_id } as any).eq("id", r.id); if (error) toast.error(error.message); else { toast.success("Saved"); load(); } }}
         onDelete={async (id) => { const { error } = await supabase.from("family_groups").delete().eq("id", id); if (error) toast.error(error.message); else { toast.success("Deleted"); load(); } }}
+        onArchive={async (r) => { const { error } = await supabase.from("family_groups").update({ is_archived: !r.is_archived } as any).eq("id", r.id); if (error) toast.error(error.message); else { toast.success(r.is_archived ? "Restored" : "Archived"); load(); } }}
       />
     </div>
   );
 }
 
 function Section({
-  title, rows, parents, parentKey, parentLabel, onCreate, onUpdate, onDelete, renderExtra, extras,
+  title, rows, parents, parentKey, parentLabel, onCreate, onUpdate, onDelete, onArchive, renderExtra, extras,
 }: {
   title: string;
   rows: Row[];
@@ -129,25 +133,34 @@ function Section({
   onCreate: (name: string, parent_id?: string) => Promise<unknown>;
   onUpdate: (r: Row) => Promise<unknown>;
   onDelete: (id: string) => Promise<unknown>;
+  onArchive?: (r: Row) => Promise<unknown>;
   renderExtra?: (r: Row, set: (r: Row) => void) => React.ReactNode;
   extras?: any;
 }) {
   const [name, setName] = useState("");
   const [parent, setParent] = useState("");
   const [edit, setEdit] = useState<Record<string, Row>>({});
+  const [showArchived, setShowArchived] = useState(false);
   void extras;
 
   const startEdit = (r: Row) => setEdit({ ...edit, [r.id]: { ...r } });
   const cancel = (id: string) => { const e = { ...edit }; delete e[id]; setEdit(e); };
+  const visible = rows.filter((r) => showArchived || !r.is_archived);
 
   return (
     <section className="rounded-xl border border-border bg-card p-5">
-      <h2 className="font-display text-lg font-semibold">{title}</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-lg font-semibold">{title}</h2>
+        <label className="flex items-center gap-1 text-xs text-muted-foreground">
+          <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
+          Show archived
+        </label>
+      </div>
       <div className="mt-3 flex flex-wrap gap-2">
         {parents && (
           <select value={parent} onChange={(e) => setParent(e.target.value)} className="rounded-md border border-border bg-background px-2 py-1.5 text-sm">
             <option value="">— {parentLabel} —</option>
-            {parents.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            {parents.filter((p) => !p.is_archived).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         )}
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder={`New ${title.slice(0, -1).toLowerCase()} name`} className="flex-1 min-w-[180px] rounded-md border border-border bg-background px-3 py-1.5 text-sm outline-none focus:border-primary" />
@@ -159,7 +172,7 @@ function Section({
         </button>
       </div>
       <ul className="mt-3 divide-y divide-border text-sm">
-        {rows.map((r) => {
+        {visible.map((r) => {
           const e = edit[r.id];
           if (e) {
             return (
@@ -178,19 +191,30 @@ function Section({
             );
           }
           return (
-            <li key={r.id} className="flex flex-wrap items-center gap-2 py-2">
+            <li key={r.id} className={`flex flex-wrap items-center gap-2 py-2 ${r.is_archived ? "opacity-60" : ""}`}>
               <span className="flex-1 font-medium">{r.name}</span>
+              {r.is_archived && <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-amber-600">Archived</span>}
               {r.slug && <span className="text-xs text-muted-foreground font-mono">{r.slug}</span>}
               {r.code_prefix && <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-mono">{r.code_prefix}</span>}
-              <button onClick={() => startEdit(r)} className="rounded-md border border-border px-2 py-1 text-xs"><Pencil className="h-3 w-3" /></button>
+              <button onClick={() => startEdit(r)} className="rounded-md border border-border px-2 py-1 text-xs" title="Edit"><Pencil className="h-3 w-3" /></button>
+              {onArchive && (
+                <button
+                  onClick={async () => { await onArchive(r); }}
+                  className="rounded-md border border-border px-2 py-1 text-xs"
+                  title={r.is_archived ? "Restore" : "Archive"}
+                >
+                  {r.is_archived ? <ArchiveRestore className="h-3 w-3" /> : <Archive className="h-3 w-3" />}
+                </button>
+              )}
               <button
-                onClick={async () => { if (confirm(`Delete "${r.name}"?`)) await onDelete(r.id); }}
+                onClick={async () => { if (confirm(`Permanently delete "${r.name}"? Products keeping this reference will be un-linked.`)) await onDelete(r.id); }}
                 className="rounded-md border border-destructive/40 px-2 py-1 text-xs text-destructive hover:bg-destructive/10"
+                title="Delete"
               ><Trash2 className="h-3 w-3" /></button>
             </li>
           );
         })}
-        {rows.length === 0 && <li className="py-3 text-xs text-muted-foreground">None yet.</li>}
+        {visible.length === 0 && <li className="py-3 text-xs text-muted-foreground">None yet.</li>}
       </ul>
     </section>
   );

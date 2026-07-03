@@ -1,9 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft, Sparkles, Trash2, Activity } from "lucide-react";
 import { regenerateWithHashGuard } from "@/lib/pipeline";
+import { ImageUploader, ImageTile, publicImageUrl, deleteStorageObject } from "@/components/ImageUploader";
+
+type AssetRow = {
+  id: string; product_id: string; asset_type: "original" | "studio" | "installed" | "gallery";
+  asset_url: string; is_primary: boolean; generated_by_ai: boolean; generation_version: number;
+};
 
 export const Route = createFileRoute("/_authenticated/admin/products/$id")({
   component: EditPage,
@@ -22,11 +28,18 @@ function EditPage() {
   const [cats, setCats] = useState<{ id: string; name: string; type_id: string }[]>([]);
   const [types, setTypes] = useState<{ id: string; name: string }[]>([]);
   const [saving, setSaving] = useState(false);
+  const [assets, setAssets] = useState<AssetRow[]>([]);
+
+  const loadAssets = useCallback(async () => {
+    const { data } = await supabase.from("product_assets").select("*").eq("product_id", id).order("created_at");
+    setAssets((data ?? []) as any);
+  }, [id]);
 
   const load = async () => {
     const { data, error } = await supabase.from("products").select("*").eq("id", id).maybeSingle();
     if (error) return toast.error(error.message);
     setP(data);
+    loadAssets();
   };
   useEffect(() => {
     load();
@@ -137,13 +150,33 @@ function EditPage() {
           </div>
         </section>
 
-        {/* Images */}
-        <section className="rounded-xl border border-border bg-card p-5 space-y-3">
-          <h2 className="font-display font-semibold">Image Manager</h2>
-          <ImageField label="Original Uploaded Image" value={p.image_url} onChange={(v) => set("image_url", v)} />
-          <ImageField label="Generated Studio Image" value={p.generated_studio_image} onChange={(v) => set("generated_studio_image", v)} />
-          <ImageField label="Generated Installed Image" value={p.generated_installed_image} onChange={(v) => set("generated_installed_image", v)} />
+        {/* Asset Manager */}
+        <section className="rounded-xl border border-border bg-card p-5 space-y-3 md:col-span-2">
+          <div className="flex items-center justify-between">
+            <h2 className="font-display font-semibold">Asset Manager</h2>
+            <span className="text-xs text-muted-foreground">
+              Mode: <span className="font-medium">{p.image_mode ?? "manual"}</span>
+            </span>
+          </div>
+          <AssetManager
+            productId={id}
+            assets={assets}
+            onChange={async () => { await loadAssets(); await load(); }}
+            imageMode={p.image_mode ?? "manual"}
+          />
         </section>
+
+        {/* Image Mode */}
+        <section className="rounded-xl border border-border bg-card p-5 space-y-3">
+          <h2 className="font-display font-semibold">Image Mode</h2>
+          <select value={p.image_mode ?? "manual"} onChange={(e) => set("image_mode", e.target.value)} className={inp}>
+            <option value="manual">Manual — no AI image generation</option>
+            <option value="ai">AI Generation — from one reference photo</option>
+            <option value="hybrid">Hybrid — your images + AI text</option>
+          </select>
+          <p className="text-xs text-muted-foreground">Change and save, then Regenerate to apply.</p>
+        </section>
+
 
         {/* SEO */}
         <section className="rounded-xl border border-border bg-card p-5 space-y-3 md:col-span-2">
@@ -252,28 +285,103 @@ function Chk({ label, checked, onChange }: { label: string; checked: boolean; on
     </label>
   );
 }
-function ImageField({ label, value, onChange }: { label: string; value: string | null; onChange: (v: string | null) => void }) {
+
+function AssetManager({
+  productId, assets, onChange, imageMode,
+}: {
+  productId: string;
+  assets: AssetRow[];
+  onChange: () => Promise<void> | void;
+  imageMode: string;
+}) {
+  const insert = async (paths: string[], asset_type: AssetRow["asset_type"]) => {
+    if (!paths.length) return;
+    const rows = paths.map((p) => ({
+      product_id: productId,
+      asset_type,
+      asset_url: p,
+      is_primary: false,
+      generated_by_ai: false,
+    }));
+    const { error } = await supabase.from("product_assets").insert(rows as any);
+    if (error) return toast.error(error.message);
+    // If nothing was primary yet, promote the first upload of the primary group.
+    const originals = assets.filter((a) => a.asset_type === "original");
+    if (asset_type === "original" && !originals.some((a) => a.is_primary)) {
+      const { data } = await supabase.from("product_assets").select("id").eq("product_id", productId).eq("asset_type", "original").order("created_at").limit(1);
+      const first = (data ?? [])[0] as any;
+      if (first) {
+        await supabase.from("product_assets").update({ is_primary: true } as any).eq("id", first.id);
+        await supabase.from("products").update({ image_url: paths[0] } as any).eq("id", productId);
+      }
+    }
+    await onChange();
+  };
+
+  const setPrimary = async (a: AssetRow) => {
+    await supabase.from("product_assets").update({ is_primary: false } as any).eq("product_id", productId).eq("asset_type", a.asset_type);
+    await supabase.from("product_assets").update({ is_primary: true } as any).eq("id", a.id);
+    const patch: any = {};
+    if (a.asset_type === "original") patch.image_url = a.asset_url;
+    if (a.asset_type === "studio") patch.generated_studio_image = a.asset_url;
+    if (a.asset_type === "installed") patch.generated_installed_image = a.asset_url;
+    if (Object.keys(patch).length) await supabase.from("products").update(patch).eq("id", productId);
+    toast.success(`Primary ${a.asset_type} set`);
+    await onChange();
+  };
+
+  const remove = async (a: AssetRow) => {
+    if (!confirm("Delete this image?")) return;
+    await deleteStorageObject(a.asset_url);
+    await supabase.from("product_assets").delete().eq("id", a.id);
+    toast.success("Deleted");
+    await onChange();
+  };
+
+  const groups: AssetRow["asset_type"][] = ["original", "studio", "installed", "gallery"];
+
   return (
-    <div className="space-y-2">
-      <div className="text-xs font-medium text-muted-foreground">{label}</div>
-      <div className="flex items-start gap-3">
-        {value ? (
-          <img src={value} alt="" className="h-20 w-20 rounded border border-border object-cover" />
-        ) : (
-          <div className="h-20 w-20 rounded border border-dashed border-border" />
-        )}
-        <div className="flex-1 space-y-2">
-          <input
-            value={value ?? ""}
-            onChange={(e) => onChange(e.target.value || null)}
-            placeholder="https://…"
-            className={inp}
-          />
-          {value && (
-            <button onClick={() => onChange(null)} className="text-xs text-destructive hover:underline">Delete</button>
-          )}
-        </div>
-      </div>
+    <div className="space-y-5">
+      {groups.map((g) => {
+        const list = assets.filter((a) => a.asset_type === g);
+        const acceptMultiple = g === "gallery" || g === "original";
+        const canUploadHere = !(imageMode === "ai" && (g === "studio" || g === "installed"));
+        return (
+          <div key={g} className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold capitalize">{g} images</h3>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                {list.length} file{list.length === 1 ? "" : "s"}
+              </span>
+            </div>
+            {canUploadHere && (
+              <ImageUploader
+                productId={productId}
+                multiple={acceptMultiple}
+                label={`Upload ${g}`}
+                compact
+                onUploaded={async (paths) => { await insert(paths, g); }}
+              />
+            )}
+            {list.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {list.map((a) => (
+                  <ImageTile
+                    key={a.id}
+                    url={publicImageUrl(a.asset_url)!}
+                    isPrimary={a.is_primary}
+                    badge={a.generated_by_ai ? "AI" : undefined}
+                    onSetPrimary={() => setPrimary(a)}
+                    onDelete={() => remove(a)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
+
+
