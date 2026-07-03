@@ -84,6 +84,7 @@ function HierarchyPage() {
         }}
         onUpdate={async (r) => { const { error } = await supabase.from("categories").update({ name: r.name, slug: r.slug, type_id: r.type_id } as any).eq("id", r.id); if (error) toast.error(error.message); else { toast.success("Saved"); load(); } }}
         onDelete={async (id) => { const { error } = await supabase.from("categories").delete().eq("id", id); if (error) toast.error(error.message); else { toast.success("Deleted"); load(); } }}
+        onArchive={async (r) => { const { error } = await supabase.from("categories").update({ is_archived: !r.is_archived } as any).eq("id", r.id); if (error) toast.error(error.message); else { toast.success(r.is_archived ? "Restored" : "Archived"); load(); } }}
       />
 
       <Section
