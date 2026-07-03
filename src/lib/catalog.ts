@@ -61,10 +61,44 @@ export type FeedFilters = {
 };
 
 export async function fetchFeedProducts(filters: FeedFilters): Promise<ProductRow[]> {
+  // Search path: use TSVector search_index when q is present.
+  if (filters.q && filters.q.trim()) {
+    const term = filters.q.trim();
+    const { data: ranked, error: rankErr } = await supabase.rpc("search_products" as any, {
+      _q: term,
+      _limit: 60,
+    } as any);
+    if (rankErr) throw rankErr;
+    const ids = ((ranked ?? []) as any[]).map((r) => r.product_id);
+    if (ids.length === 0) return [];
+    let byIdQuery = applyPublicFilters(
+      supabase.from("products").select(PRODUCT_FIELDS),
+    ).in("id", ids);
+    // Apply hierarchy filters if provided.
+    if (filters.type) {
+      const { data } = await supabase.from("product_types").select("id").eq("slug", filters.type).maybeSingle();
+      if (data?.id) byIdQuery = byIdQuery.eq("type_id", data.id);
+    }
+    if (filters.category) {
+      const { data } = await supabase.from("categories").select("id").eq("slug", filters.category).maybeSingle();
+      if (data?.id) byIdQuery = byIdQuery.eq("category_id", data.id);
+    }
+    if (filters.subcategory) {
+      const { data } = await supabase.from("subcategories").select("id").eq("slug", filters.subcategory).maybeSingle();
+      if (data?.id) byIdQuery = byIdQuery.eq("subcategory_id", data.id);
+    }
+    const { data, error } = await byIdQuery;
+    if (error) throw error;
+    // Preserve rank order.
+    const order = new Map(ids.map((id, i) => [id, i] as const));
+    return ((data ?? []) as ProductRow[]).sort(
+      (a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0),
+    );
+  }
+
   let query = applyPublicFilters(
     supabase.from("products").select(PRODUCT_FIELDS),
   )
-    // Featured-feed items pinned to the top
     .order("featured_feed", { ascending: false } as any)
     .order("created_at", { ascending: false })
     .limit(60);
@@ -92,19 +126,6 @@ export async function fetchFeedProducts(filters: FeedFilters): Promise<ProductRo
       .eq("slug", filters.subcategory)
       .maybeSingle();
     if (data?.id) query = query.eq("subcategory_id", data.id);
-  }
-  if (filters.q && filters.q.trim()) {
-    const term = filters.q.trim();
-    query = query.or(
-      [
-        `name.ilike.%${term}%`,
-        `code.ilike.%${term}%`,
-        `color.ilike.%${term}%`,
-        `material.ilike.%${term}%`,
-        `finish.ilike.%${term}%`,
-        `short_description.ilike.%${term}%`,
-      ].join(","),
-    );
   }
   const { data, error } = await query;
   if (error) throw error;
