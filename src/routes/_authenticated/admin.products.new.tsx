@@ -37,15 +37,17 @@ function WizardPage() {
     code: "",
     production_name: "",
     finish_name: "",
+    brand: "",
     size: "",
     price: "0",
-    image_url: "",
     status: "draft",
     featured_homepage: false,
     featured_feed: false,
     hidden: false,
     short_description: "",
   });
+  const [imageMode, setImageMode] = useState<ImageMode>("manual");
+  const [uploadedPaths, setUploadedPaths] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
