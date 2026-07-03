@@ -119,7 +119,7 @@ function HierarchyPage() {
 }
 
 function Section({
-  title, rows, parents, parentKey, parentLabel, onCreate, onUpdate, onDelete, renderExtra, extras,
+  title, rows, parents, parentKey, parentLabel, onCreate, onUpdate, onDelete, onArchive, renderExtra, extras,
 }: {
   title: string;
   rows: Row[];
@@ -129,25 +129,34 @@ function Section({
   onCreate: (name: string, parent_id?: string) => Promise<unknown>;
   onUpdate: (r: Row) => Promise<unknown>;
   onDelete: (id: string) => Promise<unknown>;
+  onArchive?: (r: Row) => Promise<unknown>;
   renderExtra?: (r: Row, set: (r: Row) => void) => React.ReactNode;
   extras?: any;
 }) {
   const [name, setName] = useState("");
   const [parent, setParent] = useState("");
   const [edit, setEdit] = useState<Record<string, Row>>({});
+  const [showArchived, setShowArchived] = useState(false);
   void extras;
 
   const startEdit = (r: Row) => setEdit({ ...edit, [r.id]: { ...r } });
   const cancel = (id: string) => { const e = { ...edit }; delete e[id]; setEdit(e); };
+  const visible = rows.filter((r) => showArchived || !r.is_archived);
 
   return (
     <section className="rounded-xl border border-border bg-card p-5">
-      <h2 className="font-display text-lg font-semibold">{title}</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-lg font-semibold">{title}</h2>
+        <label className="flex items-center gap-1 text-xs text-muted-foreground">
+          <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
+          Show archived
+        </label>
+      </div>
       <div className="mt-3 flex flex-wrap gap-2">
         {parents && (
           <select value={parent} onChange={(e) => setParent(e.target.value)} className="rounded-md border border-border bg-background px-2 py-1.5 text-sm">
             <option value="">— {parentLabel} —</option>
-            {parents.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            {parents.filter((p) => !p.is_archived).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         )}
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder={`New ${title.slice(0, -1).toLowerCase()} name`} className="flex-1 min-w-[180px] rounded-md border border-border bg-background px-3 py-1.5 text-sm outline-none focus:border-primary" />
@@ -159,7 +168,7 @@ function Section({
         </button>
       </div>
       <ul className="mt-3 divide-y divide-border text-sm">
-        {rows.map((r) => {
+        {visible.map((r) => {
           const e = edit[r.id];
           if (e) {
             return (
@@ -178,19 +187,30 @@ function Section({
             );
           }
           return (
-            <li key={r.id} className="flex flex-wrap items-center gap-2 py-2">
+            <li key={r.id} className={`flex flex-wrap items-center gap-2 py-2 ${r.is_archived ? "opacity-60" : ""}`}>
               <span className="flex-1 font-medium">{r.name}</span>
+              {r.is_archived && <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-amber-600">Archived</span>}
               {r.slug && <span className="text-xs text-muted-foreground font-mono">{r.slug}</span>}
               {r.code_prefix && <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-mono">{r.code_prefix}</span>}
-              <button onClick={() => startEdit(r)} className="rounded-md border border-border px-2 py-1 text-xs"><Pencil className="h-3 w-3" /></button>
+              <button onClick={() => startEdit(r)} className="rounded-md border border-border px-2 py-1 text-xs" title="Edit"><Pencil className="h-3 w-3" /></button>
+              {onArchive && (
+                <button
+                  onClick={async () => { await onArchive(r); }}
+                  className="rounded-md border border-border px-2 py-1 text-xs"
+                  title={r.is_archived ? "Restore" : "Archive"}
+                >
+                  {r.is_archived ? <ArchiveRestore className="h-3 w-3" /> : <Archive className="h-3 w-3" />}
+                </button>
+              )}
               <button
-                onClick={async () => { if (confirm(`Delete "${r.name}"?`)) await onDelete(r.id); }}
+                onClick={async () => { if (confirm(`Permanently delete "${r.name}"? Products keeping this reference will be un-linked.`)) await onDelete(r.id); }}
                 className="rounded-md border border-destructive/40 px-2 py-1 text-xs text-destructive hover:bg-destructive/10"
+                title="Delete"
               ><Trash2 className="h-3 w-3" /></button>
             </li>
           );
         })}
-        {rows.length === 0 && <li className="py-3 text-xs text-muted-foreground">None yet.</li>}
+        {visible.length === 0 && <li className="py-3 text-xs text-muted-foreground">None yet.</li>}
       </ul>
     </section>
   );
