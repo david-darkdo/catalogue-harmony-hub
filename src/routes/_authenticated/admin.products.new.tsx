@@ -4,6 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { enqueueAiPipeline } from "@/lib/pipeline";
+import { ImageUploader, ImageTile, publicImageUrl, deleteStorageObject } from "@/components/ImageUploader";
+
+type ImageMode = "manual" | "ai" | "hybrid";
 
 export const Route = createFileRoute("/_authenticated/admin/products/new")({
   component: WizardPage,
