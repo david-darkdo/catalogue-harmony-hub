@@ -285,28 +285,103 @@ function Chk({ label, checked, onChange }: { label: string; checked: boolean; on
     </label>
   );
 }
-function ImageField({ label, value, onChange }: { label: string; value: string | null; onChange: (v: string | null) => void }) {
+
+function AssetManager({
+  productId, assets, onChange, imageMode,
+}: {
+  productId: string;
+  assets: AssetRow[];
+  onChange: () => Promise<void> | void;
+  imageMode: string;
+}) {
+  const insert = async (paths: string[], asset_type: AssetRow["asset_type"]) => {
+    if (!paths.length) return;
+    const rows = paths.map((p) => ({
+      product_id: productId,
+      asset_type,
+      asset_url: p,
+      is_primary: false,
+      generated_by_ai: false,
+    }));
+    const { error } = await supabase.from("product_assets").insert(rows as any);
+    if (error) return toast.error(error.message);
+    // If nothing was primary yet, promote the first upload of the primary group.
+    const originals = assets.filter((a) => a.asset_type === "original");
+    if (asset_type === "original" && !originals.some((a) => a.is_primary)) {
+      const { data } = await supabase.from("product_assets").select("id").eq("product_id", productId).eq("asset_type", "original").order("created_at").limit(1);
+      const first = (data ?? [])[0] as any;
+      if (first) {
+        await supabase.from("product_assets").update({ is_primary: true } as any).eq("id", first.id);
+        await supabase.from("products").update({ image_url: paths[0] } as any).eq("id", productId);
+      }
+    }
+    await onChange();
+  };
+
+  const setPrimary = async (a: AssetRow) => {
+    await supabase.from("product_assets").update({ is_primary: false } as any).eq("product_id", productId).eq("asset_type", a.asset_type);
+    await supabase.from("product_assets").update({ is_primary: true } as any).eq("id", a.id);
+    const patch: any = {};
+    if (a.asset_type === "original") patch.image_url = a.asset_url;
+    if (a.asset_type === "studio") patch.generated_studio_image = a.asset_url;
+    if (a.asset_type === "installed") patch.generated_installed_image = a.asset_url;
+    if (Object.keys(patch).length) await supabase.from("products").update(patch).eq("id", productId);
+    toast.success(`Primary ${a.asset_type} set`);
+    await onChange();
+  };
+
+  const remove = async (a: AssetRow) => {
+    if (!confirm("Delete this image?")) return;
+    await deleteStorageObject(a.asset_url);
+    await supabase.from("product_assets").delete().eq("id", a.id);
+    toast.success("Deleted");
+    await onChange();
+  };
+
+  const groups: AssetRow["asset_type"][] = ["original", "studio", "installed", "gallery"];
+
   return (
-    <div className="space-y-2">
-      <div className="text-xs font-medium text-muted-foreground">{label}</div>
-      <div className="flex items-start gap-3">
-        {value ? (
-          <img src={value} alt="" className="h-20 w-20 rounded border border-border object-cover" />
-        ) : (
-          <div className="h-20 w-20 rounded border border-dashed border-border" />
-        )}
-        <div className="flex-1 space-y-2">
-          <input
-            value={value ?? ""}
-            onChange={(e) => onChange(e.target.value || null)}
-            placeholder="https://…"
-            className={inp}
-          />
-          {value && (
-            <button onClick={() => onChange(null)} className="text-xs text-destructive hover:underline">Delete</button>
-          )}
-        </div>
-      </div>
+    <div className="space-y-5">
+      {groups.map((g) => {
+        const list = assets.filter((a) => a.asset_type === g);
+        const acceptMultiple = g === "gallery" || g === "original";
+        const canUploadHere = !(imageMode === "ai" && (g === "studio" || g === "installed"));
+        return (
+          <div key={g} className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold capitalize">{g} images</h3>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                {list.length} file{list.length === 1 ? "" : "s"}
+              </span>
+            </div>
+            {canUploadHere && (
+              <ImageUploader
+                productId={productId}
+                multiple={acceptMultiple}
+                label={`Upload ${g}`}
+                compact
+                onUploaded={(paths) => insert(paths, g)}
+              />
+            )}
+            {list.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                {list.map((a) => (
+                  <ImageTile
+                    key={a.id}
+                    url={publicImageUrl(a.asset_url)!}
+                    isPrimary={a.is_primary}
+                    badge={a.generated_by_ai ? "AI" : undefined}
+                    onSetPrimary={() => setPrimary(a)}
+                    onDelete={() => remove(a)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
+}
+
 }
