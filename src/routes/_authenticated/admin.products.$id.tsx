@@ -360,7 +360,7 @@ function AssetManager({
                 multiple={acceptMultiple}
                 label={`Upload ${g}`}
                 compact
-                onUploaded={(paths) => insert(paths, g)}
+                onUploaded={async (paths) => { await insert(paths, g); }}
               />
             )}
             {list.length > 0 && (
