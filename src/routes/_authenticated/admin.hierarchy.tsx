@@ -60,6 +60,7 @@ function HierarchyPage() {
           if (error) toast.error(error.message); else { toast.success("Saved"); load(); }
         }}
         onDelete={async (id) => { const { error } = await supabase.from("product_types").delete().eq("id", id); if (error) toast.error(error.message); else { toast.success("Deleted"); load(); } }}
+        onArchive={async (r) => { const { error } = await supabase.from("product_types").update({ is_archived: !r.is_archived } as any).eq("id", r.id); if (error) toast.error(error.message); else { toast.success(r.is_archived ? "Restored" : "Archived"); load(); } }}
         renderExtra={(r, set) => (
           <>
             <input value={r.code_prefix ?? ""} onChange={(e) => set({ ...r, code_prefix: e.target.value.toUpperCase() })} placeholder="PREFIX" className="w-20 rounded-md border border-border bg-background px-2 py-1 text-xs font-mono uppercase" />
