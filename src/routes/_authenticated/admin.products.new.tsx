@@ -96,6 +96,10 @@ function WizardPage() {
     setSaving(true);
     const slugBase = form.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     const slug = `${slugBase}-${Math.random().toString(36).slice(2, 6)}`;
+    const primary = uploadedPaths[0] ?? null;
+    // Manual & Hybrid never fail on missing images; AI mode also survives — we
+    // simply mark pending and let the pipeline (or manual publish) finish it.
+    const initialState = imageMode === "manual" ? "completed" : "pending";
     const payload = {
       type_id,
       category_id,
@@ -105,11 +109,13 @@ function WizardPage() {
       code: form.code.trim() || null,
       production_name: form.production_name.trim() || null,
       finish_name: form.finish_name.trim() || null,
+      brand: form.brand.trim() || null,
       size: form.size.trim() || null,
       price: Number(form.price) || 0,
-      image_url: form.image_url.trim() || null,
+      image_url: primary,
+      image_mode: imageMode,
       status: form.status as any,
-      processing_state: "pending" as any,
+      processing_state: initialState as any,
       featured_homepage: form.featured_homepage,
       featured_feed: form.featured_feed,
       hidden: form.hidden,
@@ -119,11 +125,22 @@ function WizardPage() {
     };
     const { data, error } = await supabase.from("products").insert(payload as any).select("id").single();
     if (error) { setSaving(false); return toast.error(error.message); }
-    if (data?.id) {
+    if (data?.id && uploadedPaths.length) {
+      // Persist all uploads as product_assets (asset_type = original/gallery).
+      const rows = uploadedPaths.map((p, i) => ({
+        product_id: data.id,
+        asset_type: (i === 0 ? "original" : "gallery") as any,
+        asset_url: p,
+        is_primary: i === 0,
+        generated_by_ai: false,
+      }));
+      await supabase.from("product_assets").insert(rows as any);
+    }
+    if (data?.id && imageMode !== "manual") {
       try { await enqueueAiPipeline(data.id); } catch (e: any) { toast.error("Pipeline queue failed: " + e.message); }
     }
     setSaving(false);
-    toast.success("Product created & AI pipeline queued");
+    toast.success(imageMode === "manual" ? "Product created" : "Product created & AI pipeline queued");
     if (data?.id) navigate({ to: "/admin/products/$id", params: { id: data.id } });
   };
 
