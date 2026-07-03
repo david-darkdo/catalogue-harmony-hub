@@ -1,9 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft, Sparkles, Trash2, Activity } from "lucide-react";
 import { regenerateWithHashGuard } from "@/lib/pipeline";
+import { ImageUploader, ImageTile, publicImageUrl, deleteStorageObject } from "@/components/ImageUploader";
+
+type AssetRow = {
+  id: string; product_id: string; asset_type: "original" | "studio" | "installed" | "gallery";
+  asset_url: string; is_primary: boolean; generated_by_ai: boolean; generation_version: number;
+};
 
 export const Route = createFileRoute("/_authenticated/admin/products/$id")({
   component: EditPage,
