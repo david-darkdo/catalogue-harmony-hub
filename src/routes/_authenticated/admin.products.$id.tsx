@@ -150,13 +150,33 @@ function EditPage() {
           </div>
         </section>
 
-        {/* Images */}
-        <section className="rounded-xl border border-border bg-card p-5 space-y-3">
-          <h2 className="font-display font-semibold">Image Manager</h2>
-          <ImageField label="Original Uploaded Image" value={p.image_url} onChange={(v) => set("image_url", v)} />
-          <ImageField label="Generated Studio Image" value={p.generated_studio_image} onChange={(v) => set("generated_studio_image", v)} />
-          <ImageField label="Generated Installed Image" value={p.generated_installed_image} onChange={(v) => set("generated_installed_image", v)} />
+        {/* Asset Manager */}
+        <section className="rounded-xl border border-border bg-card p-5 space-y-3 md:col-span-2">
+          <div className="flex items-center justify-between">
+            <h2 className="font-display font-semibold">Asset Manager</h2>
+            <span className="text-xs text-muted-foreground">
+              Mode: <span className="font-medium">{p.image_mode ?? "manual"}</span>
+            </span>
+          </div>
+          <AssetManager
+            productId={id}
+            assets={assets}
+            onChange={async () => { await loadAssets(); await load(); }}
+            imageMode={p.image_mode ?? "manual"}
+          />
         </section>
+
+        {/* Image Mode */}
+        <section className="rounded-xl border border-border bg-card p-5 space-y-3">
+          <h2 className="font-display font-semibold">Image Mode</h2>
+          <select value={p.image_mode ?? "manual"} onChange={(e) => set("image_mode", e.target.value)} className={inp}>
+            <option value="manual">Manual — no AI image generation</option>
+            <option value="ai">AI Generation — from one reference photo</option>
+            <option value="hybrid">Hybrid — your images + AI text</option>
+          </select>
+          <p className="text-xs text-muted-foreground">Change and save, then Regenerate to apply.</p>
+        </section>
+
 
         {/* SEO */}
         <section className="rounded-xl border border-border bg-card p-5 space-y-3 md:col-span-2">
