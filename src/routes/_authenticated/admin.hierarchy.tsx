@@ -22,10 +22,10 @@ function HierarchyPage() {
 
   const load = async () => {
     const [t, c, s, f, ic] = await Promise.all([
-      supabase.from("product_types").select("id,name,slug,code_prefix,installation_context_id").order("name"),
-      supabase.from("categories").select("id,name,slug,type_id").order("name"),
-      supabase.from("subcategories").select("id,name,slug,category_id").order("name"),
-      supabase.from("family_groups").select("id,name,slug,subcategory_id").order("name"),
+      supabase.from("product_types").select("id,name,slug,code_prefix,installation_context_id,is_archived").order("name"),
+      supabase.from("categories").select("id,name,slug,type_id,is_archived").order("name"),
+      supabase.from("subcategories").select("id,name,slug,category_id,is_archived").order("name"),
+      supabase.from("family_groups").select("id,name,slug,subcategory_id,is_archived").order("name"),
       supabase.from("installation_contexts").select("id,name").order("name"),
     ]);
     setTypes((t.data ?? []) as any);
