@@ -28,11 +28,18 @@ function EditPage() {
   const [cats, setCats] = useState<{ id: string; name: string; type_id: string }[]>([]);
   const [types, setTypes] = useState<{ id: string; name: string }[]>([]);
   const [saving, setSaving] = useState(false);
+  const [assets, setAssets] = useState<AssetRow[]>([]);
+
+  const loadAssets = useCallback(async () => {
+    const { data } = await supabase.from("product_assets").select("*").eq("product_id", id).order("created_at");
+    setAssets((data ?? []) as any);
+  }, [id]);
 
   const load = async () => {
     const { data, error } = await supabase.from("products").select("*").eq("id", id).maybeSingle();
     if (error) return toast.error(error.message);
     setP(data);
+    loadAssets();
   };
   useEffect(() => {
     load();
