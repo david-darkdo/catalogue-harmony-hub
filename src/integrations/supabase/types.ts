@@ -154,22 +154,28 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_archived: boolean
           name: string
           slug: string
+          sort_order: number
           type_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          is_archived?: boolean
           name: string
           slug: string
+          sort_order?: number
           type_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          is_archived?: boolean
           name?: string
           slug?: string
+          sort_order?: number
           type_id?: string
         }
         Relationships: [
@@ -396,24 +402,30 @@ export type Database = {
           created_at: string
           custom_ai_prompt_override: string | null
           id: string
+          is_archived: boolean
           name: string
           slug: string
+          sort_order: number
           subcategory_id: string
         }
         Insert: {
           created_at?: string
           custom_ai_prompt_override?: string | null
           id?: string
+          is_archived?: boolean
           name: string
           slug: string
+          sort_order?: number
           subcategory_id: string
         }
         Update: {
           created_at?: string
           custom_ai_prompt_override?: string | null
           id?: string
+          is_archived?: boolean
           name?: string
           slug?: string
+          sort_order?: number
           subcategory_id?: string
         }
         Relationships: [
@@ -431,6 +443,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          is_archived: boolean
           name: string
           slug: string
           updated_at: string
@@ -439,6 +452,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_archived?: boolean
           name: string
           slug: string
           updated_at?: string
@@ -447,6 +461,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_archived?: boolean
           name?: string
           slug?: string
           updated_at?: string
@@ -503,24 +518,30 @@ export type Database = {
           created_at: string
           id: string
           installation_context_id: string
+          is_archived: boolean
           name: string
           slug: string
+          sort_order: number
         }
         Insert: {
           code_prefix: string
           created_at?: string
           id?: string
           installation_context_id: string
+          is_archived?: boolean
           name: string
           slug: string
+          sort_order?: number
         }
         Update: {
           code_prefix?: string
           created_at?: string
           id?: string
           installation_context_id?: string
+          is_archived?: boolean
           name?: string
           slug?: string
+          sort_order?: number
         }
         Relationships: [
           {
@@ -588,6 +609,7 @@ export type Database = {
           generation_version: number
           hidden: boolean
           id: string
+          image_mode: Database["public"]["Enums"]["product_image_mode"]
           image_url: string | null
           installation_context_id: string | null
           is_ai_processing: boolean
@@ -638,6 +660,7 @@ export type Database = {
           generation_version?: number
           hidden?: boolean
           id?: string
+          image_mode?: Database["public"]["Enums"]["product_image_mode"]
           image_url?: string | null
           installation_context_id?: string | null
           is_ai_processing?: boolean
@@ -688,6 +711,7 @@ export type Database = {
           generation_version?: number
           hidden?: boolean
           id?: string
+          image_mode?: Database["public"]["Enums"]["product_image_mode"]
           image_url?: string | null
           installation_context_id?: string | null
           is_ai_processing?: boolean
@@ -823,22 +847,28 @@ export type Database = {
           category_id: string
           created_at: string
           id: string
+          is_archived: boolean
           name: string
           slug: string
+          sort_order: number
         }
         Insert: {
           category_id: string
           created_at?: string
           id?: string
+          is_archived?: boolean
           name: string
           slug: string
+          sort_order?: number
         }
         Update: {
           category_id?: string
           created_at?: string
           id?: string
+          is_archived?: boolean
           name?: string
           slug?: string
+          sort_order?: number
         }
         Relationships: [
           {
@@ -965,6 +995,13 @@ export type Database = {
         Returns: undefined
       }
       retry_ai_job: { Args: { _job_id: string }; Returns: undefined }
+      search_products: {
+        Args: { _limit?: number; _q: string }
+        Returns: {
+          product_id: string
+          rank: number
+        }[]
+      }
     }
     Enums: {
       account_status: "ACTIVE" | "SUSPENDED" | "BLOCKED"
@@ -994,6 +1031,7 @@ export type Database = {
         | "CLOSED"
         | "LOST"
       product_asset_type: "original" | "studio" | "installed" | "gallery"
+      product_image_mode: "manual" | "ai" | "hybrid"
       product_processing_state:
         | "draft"
         | "pending"
@@ -1159,6 +1197,7 @@ export const Constants = {
         "LOST",
       ],
       product_asset_type: ["original", "studio", "installed", "gallery"],
+      product_image_mode: ["manual", "ai", "hybrid"],
       product_processing_state: [
         "draft",
         "pending",
