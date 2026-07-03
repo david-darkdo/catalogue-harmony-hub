@@ -176,11 +176,66 @@ function WizardPage() {
             <p className="text-xs text-muted-foreground">Auto-generated code: <span className="font-mono">{previewCode || "—"}</span></p>
             <Field label="Product Name *" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
             <Field label="Product Code (editable)" value={form.code} onChange={(v) => setForm({ ...form, code: v })} placeholder={previewCode} />
+            <Field label="Manufacturer / Brand" value={form.brand} onChange={(v) => setForm({ ...form, brand: v })} />
             <Field label="Production Name" value={form.production_name} onChange={(v) => setForm({ ...form, production_name: v })} />
             <Field label="Finish Name" value={form.finish_name} onChange={(v) => setForm({ ...form, finish_name: v })} />
-            <Field label="Size (e.g. 60×60, 30x60, 600×1200 mm)" value={form.size} onChange={(v) => setForm({ ...form, size: v })} placeholder="60×60" />
+            <Field label="Display Size (e.g. 60×60, 30x60, 600×1200 mm)" value={form.size} onChange={(v) => setForm({ ...form, size: v })} placeholder="60×60" />
             <Field label="Price" type="number" value={form.price} onChange={(v) => setForm({ ...form, price: v })} />
-            <Field label="Image URL" value={form.image_url} onChange={(v) => setForm({ ...form, image_url: v })} placeholder="https://…" />
+
+            {/* Image mode */}
+            <div className="space-y-2 pt-1">
+              <span className="block text-xs font-medium text-muted-foreground">Image Mode</span>
+              <div className="grid gap-2 sm:grid-cols-3">
+                {(
+                  [
+                    { id: "manual", label: "Manual", desc: "You upload every image. AI writes text only." },
+                    { id: "ai", label: "AI Generation", desc: "One reference photo → AI generates studio & installed." },
+                    { id: "hybrid", label: "Hybrid", desc: "Your images. AI writes SEO, keywords, FAQ." },
+                  ] as { id: ImageMode; label: string; desc: string }[]
+                ).map((m) => (
+                  <button
+                    type="button"
+                    key={m.id}
+                    onClick={() => setImageMode(m.id)}
+                    className={`rounded-lg border px-3 py-2 text-left text-xs transition ${
+                      imageMode === m.id ? "border-primary bg-primary/10" : "border-border hover:border-primary"
+                    }`}
+                  >
+                    <div className="font-medium">{m.label}</div>
+                    <div className="mt-0.5 text-muted-foreground">{m.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Uploads */}
+            <div className="space-y-2 pt-2">
+              <span className="block text-xs font-medium text-muted-foreground">
+                {imageMode === "ai" ? "Reference image (upload one)" : "Product images"}
+              </span>
+              <ImageUploader
+                multiple={imageMode !== "ai"}
+                onUploaded={(paths) => setUploadedPaths((prev) => (imageMode === "ai" ? paths.slice(-1) : [...prev, ...paths]))}
+              />
+              {uploadedPaths.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                  {uploadedPaths.map((p, i) => (
+                    <ImageTile
+                      key={p}
+                      url={publicImageUrl(p)!}
+                      isPrimary={i === 0}
+                      badge={i === 0 ? "Primary" : "Gallery"}
+                      onSetPrimary={() => setUploadedPaths((prev) => [p, ...prev.filter((x) => x !== p)])}
+                      onDelete={async () => {
+                        await deleteStorageObject(p);
+                        setUploadedPaths((prev) => prev.filter((x) => x !== p));
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
             <label className="block text-sm">
               <span className="mb-1 block text-xs font-medium text-muted-foreground">Status</span>
               <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm">
