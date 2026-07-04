@@ -60,6 +60,8 @@ function HierarchyPage() {
       </div>
 
       <Section
+        tableName="product_types"
+        onReorder={async (r, dir) => { await reorder("product_types", types, r.id, dir); load(); }}
         title="Product Types"
         rows={types}
         extras={contexts}
@@ -87,6 +89,8 @@ function HierarchyPage() {
       />
 
       <Section
+        tableName="categories"
+        onReorder={async (r, dir) => { await reorder("categories", cats.filter(c => c.type_id === r.type_id), r.id, dir); load(); }}
         title="Categories"
         rows={cats}
         parentLabel="Type"
@@ -103,6 +107,8 @@ function HierarchyPage() {
       />
 
       <Section
+        tableName="subcategories"
+        onReorder={async (r, dir) => { await reorder("subcategories", subs.filter(s => s.category_id === r.category_id), r.id, dir); load(); }}
         title="Subcategories"
         rows={subs}
         parentLabel="Category"
@@ -119,6 +125,8 @@ function HierarchyPage() {
       />
 
       <Section
+        tableName="family_groups"
+        onReorder={async (r, dir) => { await reorder("family_groups", fams.filter(f => f.subcategory_id === r.subcategory_id), r.id, dir); load(); }}
         title="Family Groups"
         rows={fams}
         parentLabel="Subcategory"
