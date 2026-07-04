@@ -1,12 +1,14 @@
 import { Link } from "@tanstack/react-router";
 import type { ProductRow } from "@/lib/catalog";
 import { AddToCollectionButton } from "./AddToCollectionButton";
+import { publicImageUrl } from "./ImageUploader";
 
 export function ProductCard({ product }: { product: ProductRow }) {
   const img =
-    product.generated_studio_image ||
-    product.image_url ||
+    publicImageUrl(product.generated_studio_image) ||
+    publicImageUrl(product.image_url) ||
     "https://placehold.co/600x600/eee/aaa?text=No+Image";
+
 
   return (
     <div className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition hover:shadow-md">
