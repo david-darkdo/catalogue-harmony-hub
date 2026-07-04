@@ -23,7 +23,7 @@ async function reorder(table: TableName, rows: { id: string; sort_order?: number
 }
 
 
-type Row = { id: string; name: string; slug?: string; type_id?: string; category_id?: string; subcategory_id?: string; code_prefix?: string; installation_context_id?: string; is_archived?: boolean };
+type Row = { id: string; name: string; slug?: string; type_id?: string; category_id?: string; subcategory_id?: string; code_prefix?: string; installation_context_id?: string; is_archived?: boolean; sort_order?: number | null };
 type Ctx = { id: string; name: string };
 
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -37,10 +37,10 @@ function HierarchyPage() {
 
   const load = async () => {
     const [t, c, s, f, ic] = await Promise.all([
-      supabase.from("product_types").select("id,name,slug,code_prefix,installation_context_id,is_archived").order("name"),
-      supabase.from("categories").select("id,name,slug,type_id,is_archived").order("name"),
-      supabase.from("subcategories").select("id,name,slug,category_id,is_archived").order("name"),
-      supabase.from("family_groups").select("id,name,slug,subcategory_id,is_archived").order("name"),
+      supabase.from("product_types").select("id,name,slug,code_prefix,installation_context_id,is_archived,sort_order").order("sort_order").order("name"),
+      supabase.from("categories").select("id,name,slug,type_id,is_archived,sort_order").order("sort_order").order("name"),
+      supabase.from("subcategories").select("id,name,slug,category_id,is_archived,sort_order").order("sort_order").order("name"),
+      supabase.from("family_groups").select("id,name,slug,subcategory_id,is_archived,sort_order").order("sort_order").order("name"),
       supabase.from("installation_contexts").select("id,name").order("name"),
     ]);
     setTypes((t.data ?? []) as any);
