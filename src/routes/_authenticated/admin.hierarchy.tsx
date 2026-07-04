@@ -146,7 +146,7 @@ function HierarchyPage() {
 }
 
 function Section({
-  title, rows, parents, parentKey, parentLabel, onCreate, onUpdate, onDelete, onArchive, renderExtra, extras,
+  title, rows, parents, parentKey, parentLabel, onCreate, onUpdate, onDelete, onArchive, onReorder, renderExtra, extras, tableName,
 }: {
   title: string;
   rows: Row[];
@@ -157,9 +157,12 @@ function Section({
   onUpdate: (r: Row) => Promise<unknown>;
   onDelete: (id: string) => Promise<unknown>;
   onArchive?: (r: Row) => Promise<unknown>;
+  onReorder?: (r: Row, dir: -1 | 1) => Promise<unknown>;
   renderExtra?: (r: Row, set: (r: Row) => void) => React.ReactNode;
   extras?: any;
+  tableName?: string;
 }) {
+  void tableName;
   const [name, setName] = useState("");
   const [parent, setParent] = useState("");
   const [edit, setEdit] = useState<Record<string, Row>>({});
@@ -220,6 +223,12 @@ function Section({
               {r.slug && <span className="text-xs text-muted-foreground font-mono">{r.slug}</span>}
               {r.code_prefix && <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-mono">{r.code_prefix}</span>}
               <button onClick={() => startEdit(r)} className="rounded-md border border-border px-2 py-1 text-xs" title="Edit"><Pencil className="h-3 w-3" /></button>
+              {onReorder && (
+                <>
+                  <button onClick={async () => { await onReorder(r, -1); }} className="rounded-md border border-border px-2 py-1 text-xs" title="Move up"><ArrowUp className="h-3 w-3" /></button>
+                  <button onClick={async () => { await onReorder(r, 1); }} className="rounded-md border border-border px-2 py-1 text-xs" title="Move down"><ArrowDown className="h-3 w-3" /></button>
+                </>
+              )}
               {onArchive && (
                 <button
                   onClick={async () => { await onArchive(r); }}
