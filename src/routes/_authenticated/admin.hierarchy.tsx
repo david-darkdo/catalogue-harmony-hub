@@ -2,11 +2,26 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, Archive, ArchiveRestore } from "lucide-react";
+import { Plus, Trash2, Pencil, Archive, ArchiveRestore, ArrowUp, ArrowDown } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/hierarchy")({
   component: HierarchyPage,
 });
+
+type TableName = "product_types" | "categories" | "subcategories" | "family_groups";
+async function reorder(table: TableName, rows: { id: string; sort_order?: number | null }[], id: string, dir: -1 | 1) {
+  const sorted = [...rows].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  const idx = sorted.findIndex((r) => r.id === id);
+  const swapIdx = idx + dir;
+  if (idx < 0 || swapIdx < 0 || swapIdx >= sorted.length) return;
+  const a = sorted[idx];
+  const b = sorted[swapIdx];
+  const aOrder = a.sort_order ?? idx;
+  const bOrder = b.sort_order ?? swapIdx;
+  await supabase.from(table).update({ sort_order: bOrder } as any).eq("id", a.id);
+  await supabase.from(table).update({ sort_order: aOrder } as any).eq("id", b.id);
+}
+
 
 type Row = { id: string; name: string; slug?: string; type_id?: string; category_id?: string; subcategory_id?: string; code_prefix?: string; installation_context_id?: string; is_archived?: boolean };
 type Ctx = { id: string; name: string };
