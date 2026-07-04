@@ -13,6 +13,7 @@ import {
 import { useAppSettings, waLink } from "@/lib/settings";
 import { toast } from "sonner";
 import { MessageCircle, Share2, Trash2 } from "lucide-react";
+import { publicImageUrl } from "@/components/ImageUploader";
 
 export const Route = createFileRoute("/collection")({
   head: () => ({ meta: [{ title: "My Collection — Stoneworks" }] }),
@@ -142,7 +143,7 @@ function CollectionPage() {
             {products.map((p) => (
               <li key={p.id} className="flex items-center gap-3 p-3">
                 <Link to="/product/$slug" params={{ slug: p.slug }} className="block h-16 w-16 shrink-0 overflow-hidden rounded-md bg-muted">
-                  <img src={p.generated_studio_image || p.image_url} alt={p.name} className="h-full w-full object-cover" loading="lazy" />
+                  <img src={publicImageUrl(p.generated_studio_image) || publicImageUrl(p.image_url) || ""} alt={p.name} className="h-full w-full object-cover" loading="lazy" />
                 </Link>
                 <div className="min-w-0 flex-1">
                   <Link to="/product/$slug" params={{ slug: p.slug }} className="block truncate font-medium hover:text-primary">
