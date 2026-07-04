@@ -5,6 +5,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { fetchProductBySlug, fetchRelatedProducts } from "@/lib/catalog";
 import { ArrowLeft } from "lucide-react";
 import { AddToCollectionButton } from "@/components/AddToCollectionButton";
+import { publicImageUrl } from "@/components/ImageUploader";
 
 const productQuery = (slug: string) =>
   queryOptions({

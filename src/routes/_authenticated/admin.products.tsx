@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
+import { publicImageUrl } from "@/components/ImageUploader";
 
 export const Route = createFileRoute("/_authenticated/admin/products")({
   component: ProductsLayout,
@@ -271,7 +272,7 @@ function ProductLibrary() {
               const cat = cats.find((x) => x.id === r.category_id)?.name ?? "—";
               const sub = subs.find((x) => x.id === r.subcategory_id)?.name ?? "—";
               const fam = fams.find((x) => x.id === r.family_id)?.name ?? "—";
-              const img = r.generated_studio_image || r.image_url;
+              const img = publicImageUrl(r.generated_studio_image) || publicImageUrl(r.image_url);
               return (
                 <tr key={r.id} className={r.deleted_at ? "opacity-50" : ""}>
                   <td className="p-2"><input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleSel(r.id)} /></td>
