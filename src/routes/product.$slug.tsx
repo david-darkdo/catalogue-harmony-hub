@@ -5,6 +5,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { fetchProductBySlug, fetchRelatedProducts } from "@/lib/catalog";
 import { ArrowLeft } from "lucide-react";
 import { AddToCollectionButton } from "@/components/AddToCollectionButton";
+import { publicImageUrl } from "@/components/ImageUploader";
 
 const productQuery = (slug: string) =>
   queryOptions({
@@ -57,8 +58,8 @@ function ProductPage() {
     relatedQuery(product.family_id, product.id),
   );
 
-  const studio = product.generated_studio_image || product.image_url;
-  const installed = product.generated_installed_image || product.image_url;
+  const studio = publicImageUrl(product.generated_studio_image) || publicImageUrl(product.image_url);
+  const installed = publicImageUrl(product.generated_installed_image) || publicImageUrl(product.image_url);
 
   return (
     <AppShell>

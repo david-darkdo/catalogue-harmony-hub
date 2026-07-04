@@ -2,13 +2,28 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Trash2, Pencil, Archive, ArchiveRestore } from "lucide-react";
+import { Plus, Trash2, Pencil, Archive, ArchiveRestore, ArrowUp, ArrowDown } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/hierarchy")({
   component: HierarchyPage,
 });
 
-type Row = { id: string; name: string; slug?: string; type_id?: string; category_id?: string; subcategory_id?: string; code_prefix?: string; installation_context_id?: string; is_archived?: boolean };
+type TableName = "product_types" | "categories" | "subcategories" | "family_groups";
+async function reorder(table: TableName, rows: { id: string; sort_order?: number | null }[], id: string, dir: -1 | 1) {
+  const sorted = [...rows].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  const idx = sorted.findIndex((r) => r.id === id);
+  const swapIdx = idx + dir;
+  if (idx < 0 || swapIdx < 0 || swapIdx >= sorted.length) return;
+  const a = sorted[idx];
+  const b = sorted[swapIdx];
+  const aOrder = a.sort_order ?? idx;
+  const bOrder = b.sort_order ?? swapIdx;
+  await supabase.from(table).update({ sort_order: bOrder } as any).eq("id", a.id);
+  await supabase.from(table).update({ sort_order: aOrder } as any).eq("id", b.id);
+}
+
+
+type Row = { id: string; name: string; slug?: string; type_id?: string; category_id?: string; subcategory_id?: string; code_prefix?: string; installation_context_id?: string; is_archived?: boolean; sort_order?: number | null };
 type Ctx = { id: string; name: string };
 
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -22,10 +37,10 @@ function HierarchyPage() {
 
   const load = async () => {
     const [t, c, s, f, ic] = await Promise.all([
-      supabase.from("product_types").select("id,name,slug,code_prefix,installation_context_id,is_archived").order("name"),
-      supabase.from("categories").select("id,name,slug,type_id,is_archived").order("name"),
-      supabase.from("subcategories").select("id,name,slug,category_id,is_archived").order("name"),
-      supabase.from("family_groups").select("id,name,slug,subcategory_id,is_archived").order("name"),
+      supabase.from("product_types").select("id,name,slug,code_prefix,installation_context_id,is_archived,sort_order").order("sort_order").order("name"),
+      supabase.from("categories").select("id,name,slug,type_id,is_archived,sort_order").order("sort_order").order("name"),
+      supabase.from("subcategories").select("id,name,slug,category_id,is_archived,sort_order").order("sort_order").order("name"),
+      supabase.from("family_groups").select("id,name,slug,subcategory_id,is_archived,sort_order").order("sort_order").order("name"),
       supabase.from("installation_contexts").select("id,name").order("name"),
     ]);
     setTypes((t.data ?? []) as any);
@@ -45,6 +60,8 @@ function HierarchyPage() {
       </div>
 
       <Section
+        tableName="product_types"
+        onReorder={async (r, dir) => { await reorder("product_types", types, r.id, dir); load(); }}
         title="Product Types"
         rows={types}
         extras={contexts}
@@ -72,6 +89,8 @@ function HierarchyPage() {
       />
 
       <Section
+        tableName="categories"
+        onReorder={async (r, dir) => { await reorder("categories", cats.filter(c => c.type_id === r.type_id), r.id, dir); load(); }}
         title="Categories"
         rows={cats}
         parentLabel="Type"
@@ -88,6 +107,8 @@ function HierarchyPage() {
       />
 
       <Section
+        tableName="subcategories"
+        onReorder={async (r, dir) => { await reorder("subcategories", subs.filter(s => s.category_id === r.category_id), r.id, dir); load(); }}
         title="Subcategories"
         rows={subs}
         parentLabel="Category"
@@ -104,6 +125,8 @@ function HierarchyPage() {
       />
 
       <Section
+        tableName="family_groups"
+        onReorder={async (r, dir) => { await reorder("family_groups", fams.filter(f => f.subcategory_id === r.subcategory_id), r.id, dir); load(); }}
         title="Family Groups"
         rows={fams}
         parentLabel="Subcategory"
@@ -123,7 +146,7 @@ function HierarchyPage() {
 }
 
 function Section({
-  title, rows, parents, parentKey, parentLabel, onCreate, onUpdate, onDelete, onArchive, renderExtra, extras,
+  title, rows, parents, parentKey, parentLabel, onCreate, onUpdate, onDelete, onArchive, onReorder, renderExtra, extras, tableName,
 }: {
   title: string;
   rows: Row[];
@@ -134,9 +157,12 @@ function Section({
   onUpdate: (r: Row) => Promise<unknown>;
   onDelete: (id: string) => Promise<unknown>;
   onArchive?: (r: Row) => Promise<unknown>;
+  onReorder?: (r: Row, dir: -1 | 1) => Promise<unknown>;
   renderExtra?: (r: Row, set: (r: Row) => void) => React.ReactNode;
   extras?: any;
+  tableName?: string;
 }) {
+  void tableName;
   const [name, setName] = useState("");
   const [parent, setParent] = useState("");
   const [edit, setEdit] = useState<Record<string, Row>>({});
@@ -197,6 +223,12 @@ function Section({
               {r.slug && <span className="text-xs text-muted-foreground font-mono">{r.slug}</span>}
               {r.code_prefix && <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-mono">{r.code_prefix}</span>}
               <button onClick={() => startEdit(r)} className="rounded-md border border-border px-2 py-1 text-xs" title="Edit"><Pencil className="h-3 w-3" /></button>
+              {onReorder && (
+                <>
+                  <button onClick={async () => { await onReorder(r, -1); }} className="rounded-md border border-border px-2 py-1 text-xs" title="Move up"><ArrowUp className="h-3 w-3" /></button>
+                  <button onClick={async () => { await onReorder(r, 1); }} className="rounded-md border border-border px-2 py-1 text-xs" title="Move down"><ArrowDown className="h-3 w-3" /></button>
+                </>
+              )}
               {onArchive && (
                 <button
                   onClick={async () => { await onArchive(r); }}
