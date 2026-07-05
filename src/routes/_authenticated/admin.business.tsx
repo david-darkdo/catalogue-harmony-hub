@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { publicImageUrl } from "@/components/ImageUploader";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import {
