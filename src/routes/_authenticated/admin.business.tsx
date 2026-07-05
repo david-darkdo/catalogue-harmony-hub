@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { publicImageUrl } from "@/components/ImageUploader";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import {
@@ -421,9 +422,10 @@ function InquiryDrawer({
               <ul className="grid grid-cols-3 gap-2">
                 {products.map((p) => (
                   <li key={p.id} className="overflow-hidden rounded-md border border-border bg-card">
-                    {p.image_url ? (
+                    {publicImageUrl(p.image_url) ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.image_url} alt={p.name} className="h-16 w-full object-cover" loading="lazy" />
+                      <img src={publicImageUrl(p.image_url)!} alt={p.name} className="h-16 w-full object-cover" loading="lazy" />
+
                     ) : (
                       <div className="h-16 w-full bg-muted" />
                     )}
