@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { RefreshCw, Play, AlertTriangle, CheckCircle2, Clock, Archive } from "lucide-react";
 import { retryJob, retryProductPipeline, regenerateWithHashGuard } from "@/lib/pipeline";
+import { publicImageUrl } from "@/components/ImageUploader";
 
 export const Route = createFileRoute("/_authenticated/admin/pipeline")({
   head: () => ({ meta: [{ title: "Product Pipeline — Admin" }] }),
