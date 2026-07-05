@@ -165,8 +165,9 @@ function PipelinePage() {
             {rows.map((p) => (
               <li key={p.id} className="p-4">
                 <div className="flex flex-wrap items-start gap-3">
-                  {p.image_url ? (
-                    <img src={p.image_url} alt="" className="h-14 w-14 rounded border border-border object-cover" />
+                  {publicImageUrl(p.image_url) ? (
+                    <img src={publicImageUrl(p.image_url)!} alt="" className="h-14 w-14 rounded border border-border object-cover" />
+
                   ) : (
                     <div className="h-14 w-14 rounded border border-dashed border-border" />
                   )}
