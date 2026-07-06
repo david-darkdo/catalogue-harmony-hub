@@ -75,6 +75,21 @@ function PipelinePage() {
     } catch (e: any) { toast.error(e.message ?? "Retry failed"); }
   };
 
+  const handleRunNow = async (productId: string) => {
+    setRunning(productId);
+    try {
+      const res = await runPipeline({ data: { productId } });
+      if (res.ok) toast.success("Pipeline completed"); else toast.error("Pipeline failed — see jobs");
+    } catch (e: any) {
+      toast.error(e.message ?? "Run failed");
+    } finally {
+      setRunning(null);
+      await loadRows(); await loadCounts();
+      if (expanded === productId) await loadJobs(productId);
+    }
+  };
+
+
   const handleRegenerate = async (productId: string) => {
     try {
       const res = await regenerateWithHashGuard(productId);
