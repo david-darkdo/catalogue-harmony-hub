@@ -215,6 +215,15 @@ function PipelinePage() {
                     >
                       {expanded === p.id ? "Hide jobs" : "View jobs"}
                     </button>
+                    {(bucket === "pending" || bucket === "processing" || bucket === "error") && (
+                      <button
+                        disabled={running === p.id}
+                        onClick={() => handleRunNow(p.id)}
+                        className="inline-flex items-center gap-1 rounded-md border border-primary bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                      >
+                        <Play className="h-3 w-3" /> {running === p.id ? "Running…" : "Run now"}
+                      </button>
+                    )}
                     {bucket === "error" && (
                       <button
                         onClick={() => handleRetryProduct(p.id)}
