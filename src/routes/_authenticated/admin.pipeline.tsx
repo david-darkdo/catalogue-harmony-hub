@@ -16,6 +16,8 @@ export const Route = createFileRoute("/_authenticated/admin/pipeline")({
 type Bucket = "pending" | "processing" | "completed" | "error" | "archived";
 
 function PipelinePage() {
+  const runPipeline = useServerFn(runProductPipeline);
+  const [running, setRunning] = useState<string | null>(null);
   const [bucket, setBucket] = useState<Bucket>("processing");
   const [rows, setRows] = useState<any[]>([]);
   const [counts, setCounts] = useState<Record<Bucket, number>>({
