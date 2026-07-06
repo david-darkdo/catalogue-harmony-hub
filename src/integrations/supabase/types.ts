@@ -19,13 +19,17 @@ export type Database = {
           attempts: number
           completed_at: string | null
           created_at: string
+          dependency_chain_id: string | null
           error_log: Json | null
+          execution_time_ms: number | null
           id: string
           job_dependency: Database["public"]["Enums"]["ai_job_type"] | null
           job_type: Database["public"]["Enums"]["ai_job_type"]
+          parent_job_id: string | null
           payload: Json | null
           product_id: string
           result: Json | null
+          retry_count: number
           started_at: string | null
           status: Database["public"]["Enums"]["ai_job_status"]
           updated_at: string
@@ -34,13 +38,17 @@ export type Database = {
           attempts?: number
           completed_at?: string | null
           created_at?: string
+          dependency_chain_id?: string | null
           error_log?: Json | null
+          execution_time_ms?: number | null
           id?: string
           job_dependency?: Database["public"]["Enums"]["ai_job_type"] | null
           job_type: Database["public"]["Enums"]["ai_job_type"]
+          parent_job_id?: string | null
           payload?: Json | null
           product_id: string
           result?: Json | null
+          retry_count?: number
           started_at?: string | null
           status?: Database["public"]["Enums"]["ai_job_status"]
           updated_at?: string
@@ -49,18 +57,29 @@ export type Database = {
           attempts?: number
           completed_at?: string | null
           created_at?: string
+          dependency_chain_id?: string | null
           error_log?: Json | null
+          execution_time_ms?: number | null
           id?: string
           job_dependency?: Database["public"]["Enums"]["ai_job_type"] | null
           job_type?: Database["public"]["Enums"]["ai_job_type"]
+          parent_job_id?: string | null
           payload?: Json | null
           product_id?: string
           result?: Json | null
+          retry_count?: number
           started_at?: string | null
           status?: Database["public"]["Enums"]["ai_job_status"]
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "ai_jobs_parent_job_id_fkey"
+            columns: ["parent_job_id"]
+            isOneToOne: false
+            referencedRelation: "ai_jobs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ai_jobs_product_id_fkey"
             columns: ["product_id"]
@@ -438,6 +457,41 @@ export type Database = {
           },
         ]
       }
+      generation_versions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          product_id: string
+          snapshot: Json
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          product_id: string
+          snapshot: Json
+          version: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          product_id?: string
+          snapshot?: Json
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generation_versions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       installation_contexts: {
         Row: {
           created_at: string
@@ -553,6 +607,71 @@ export type Database = {
           },
         ]
       }
+      product_understanding: {
+        Row: {
+          confidence_score: number | null
+          created_at: string
+          detected_color: string | null
+          detected_environment: string | null
+          detected_finish: string | null
+          detected_installation_context: string | null
+          detected_keywords: string[] | null
+          detected_material: string | null
+          detected_product_type: string | null
+          detected_style: string | null
+          detected_tags: string[] | null
+          id: string
+          product_id: string
+          provider: string
+          raw_ai_response: Json | null
+          updated_at: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string
+          detected_color?: string | null
+          detected_environment?: string | null
+          detected_finish?: string | null
+          detected_installation_context?: string | null
+          detected_keywords?: string[] | null
+          detected_material?: string | null
+          detected_product_type?: string | null
+          detected_style?: string | null
+          detected_tags?: string[] | null
+          id?: string
+          product_id: string
+          provider?: string
+          raw_ai_response?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string
+          detected_color?: string | null
+          detected_environment?: string | null
+          detected_finish?: string | null
+          detected_installation_context?: string | null
+          detected_keywords?: string[] | null
+          detected_material?: string | null
+          detected_product_type?: string | null
+          detected_style?: string | null
+          detected_tags?: string[] | null
+          id?: string
+          product_id?: string
+          provider?: string
+          raw_ai_response?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_understanding_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_views: {
         Row: {
           id: string
@@ -598,6 +717,7 @@ export type Database = {
           deleted_at: string | null
           error_log: Json | null
           family_id: string | null
+          faq: Json | null
           featured_feed: boolean
           featured_homepage: boolean
           finish: string | null
@@ -615,6 +735,7 @@ export type Database = {
           is_ai_processing: boolean
           is_published: boolean
           last_processed_at: string | null
+          master_document: Json | null
           material: string | null
           name: string
           price: number
@@ -630,6 +751,7 @@ export type Database = {
           slug: string
           status: Database["public"]["Enums"]["product_status"]
           stock_quantity: number
+          structured_data: Json | null
           subcategory_id: string | null
           type_id: string | null
           updated_at: string
@@ -649,6 +771,7 @@ export type Database = {
           deleted_at?: string | null
           error_log?: Json | null
           family_id?: string | null
+          faq?: Json | null
           featured_feed?: boolean
           featured_homepage?: boolean
           finish?: string | null
@@ -666,6 +789,7 @@ export type Database = {
           is_ai_processing?: boolean
           is_published?: boolean
           last_processed_at?: string | null
+          master_document?: Json | null
           material?: string | null
           name: string
           price?: number
@@ -681,6 +805,7 @@ export type Database = {
           slug: string
           status?: Database["public"]["Enums"]["product_status"]
           stock_quantity?: number
+          structured_data?: Json | null
           subcategory_id?: string | null
           type_id?: string | null
           updated_at?: string
@@ -700,6 +825,7 @@ export type Database = {
           deleted_at?: string | null
           error_log?: Json | null
           family_id?: string | null
+          faq?: Json | null
           featured_feed?: boolean
           featured_homepage?: boolean
           finish?: string | null
@@ -717,6 +843,7 @@ export type Database = {
           is_ai_processing?: boolean
           is_published?: boolean
           last_processed_at?: string | null
+          master_document?: Json | null
           material?: string | null
           name?: string
           price?: number
@@ -732,6 +859,7 @@ export type Database = {
           slug?: string
           status?: Database["public"]["Enums"]["product_status"]
           stock_quantity?: number
+          structured_data?: Json | null
           subcategory_id?: string | null
           type_id?: string | null
           updated_at?: string

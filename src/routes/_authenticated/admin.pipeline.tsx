@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { RefreshCw, Play, AlertTriangle, CheckCircle2, Clock, Archive } from "lucide-react";
 import { retryJob, retryProductPipeline, regenerateWithHashGuard } from "@/lib/pipeline";
 import { publicImageUrl } from "@/components/ImageUploader";
+import { useServerFn } from "@tanstack/react-start";
+import { runProductPipeline } from "@/lib/ai-pipeline.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/pipeline")({
   head: () => ({ meta: [{ title: "Product Pipeline — Admin" }] }),
@@ -14,6 +16,8 @@ export const Route = createFileRoute("/_authenticated/admin/pipeline")({
 type Bucket = "pending" | "processing" | "completed" | "error" | "archived";
 
 function PipelinePage() {
+  const runPipeline = useServerFn(runProductPipeline);
+  const [running, setRunning] = useState<string | null>(null);
   const [bucket, setBucket] = useState<Bucket>("processing");
   const [rows, setRows] = useState<any[]>([]);
   const [counts, setCounts] = useState<Record<Bucket, number>>({
@@ -70,6 +74,21 @@ function PipelinePage() {
       if (expanded === productId) await loadJobs(productId);
     } catch (e: any) { toast.error(e.message ?? "Retry failed"); }
   };
+
+  const handleRunNow = async (productId: string) => {
+    setRunning(productId);
+    try {
+      const res = await runPipeline({ data: { productId } });
+      if (res.ok) toast.success("Pipeline completed"); else toast.error("Pipeline failed — see jobs");
+    } catch (e: any) {
+      toast.error(e.message ?? "Run failed");
+    } finally {
+      setRunning(null);
+      await loadRows(); await loadCounts();
+      if (expanded === productId) await loadJobs(productId);
+    }
+  };
+
 
   const handleRegenerate = async (productId: string) => {
     try {
@@ -196,6 +215,15 @@ function PipelinePage() {
                     >
                       {expanded === p.id ? "Hide jobs" : "View jobs"}
                     </button>
+                    {(bucket === "pending" || bucket === "processing" || bucket === "error") && (
+                      <button
+                        disabled={running === p.id}
+                        onClick={() => handleRunNow(p.id)}
+                        className="inline-flex items-center gap-1 rounded-md border border-primary bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                      >
+                        <Play className="h-3 w-3" /> {running === p.id ? "Running…" : "Run now"}
+                      </button>
+                    )}
                     {bucket === "error" && (
                       <button
                         onClick={() => handleRetryProduct(p.id)}
