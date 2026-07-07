@@ -148,18 +148,97 @@ export const runProductPipeline = createServerFn({ method: "POST" })
           await supabase.from("products").update({ faq: faq.faq ?? [], structured_data: structured } as any).eq("id", productId);
           result.count = (faq.faq ?? []).length;
         } else if (jt === "image_generation") {
-          // MOCK provider — reuse the uploaded image as studio & installed.
-          if (product.image_url) {
-            await supabase.from("products").update({
-              generated_studio_image: product.image_url,
-              generated_installed_image: product.image_url,
-            } as any).eq("id", productId);
-            await supabase.from("product_assets" as any).insert([
-              { product_id: productId, asset_type: "studio", asset_url: product.image_url, generated_by_ai: true, generation_version: (product.generation_version ?? 0) + 1, metadata: { provider: "mock" } },
-              { product_id: productId, asset_type: "installed", asset_url: product.image_url, generated_by_ai: true, generation_version: (product.generation_version ?? 0) + 1, metadata: { provider: "mock" } },
-            ]);
-            result.mode = "mock";
+          // Real AI image generation via Lovable AI Gateway (Gemini image).
+          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+          const { data: pu } = await supabase.from("product_understanding" as any)
+            .select("*").eq("product_id", productId).maybeSingle();
+          const und: any = pu ?? {};
+          const ctxSlug = und.detected_installation_context ?? "luxury_showroom";
+          const ctxLabel = String(ctxSlug).replace(/^luxury_/, "").replace(/_/g, " ");
+          const desc = [
+            product.name,
+            product.brand,
+            product.finish ?? product.finish_name,
+            product.material ?? und.detected_material,
+            product.color ?? und.detected_color,
+            product.size,
+          ].filter(Boolean).join(", ");
+
+          const studioPrompt = `Professional studio product photograph of ${desc}. Neutral seamless backdrop, soft diffused lighting, sharp focus, photorealistic, ultra-detailed, editorial quality, 4k.`;
+          const installedPrompt = `Photorealistic interior scene of a ${ctxLabel} featuring ${desc} elegantly installed in situ. Luxury Nigerian showroom aesthetic, natural window light, warm ambiance, editorial architectural photography, ultra-detailed, 4k.`;
+
+          async function genImage(prompt: string): Promise<Buffer> {
+            const key = process.env.LOVABLE_API_KEY;
+            if (!key) throw new Error("LOVABLE_API_KEY missing");
+            const res = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+              body: JSON.stringify({
+                model: "google/gemini-3.1-flash-image",
+                messages: [{ role: "user", content: prompt }],
+                modalities: ["image", "text"],
+              }),
+            });
+            if (!res.ok) {
+              const t = await res.text().catch(() => "");
+              throw new Error(`Image gateway ${res.status}: ${t.slice(0, 200)}`);
+            }
+            const j: any = await res.json();
+            const b64 = j?.data?.[0]?.b64_json
+              ?? j?.choices?.[0]?.message?.images?.[0]?.image_url?.url?.split(",")[1]
+              ?? null;
+            if (!b64) throw new Error("No image data returned");
+            return Buffer.from(b64, "base64");
           }
+
+          const nextVersion = (product.generation_version ?? 0) + 1;
+          const uploadOne = async (label: "studio" | "installed", bytes: Buffer) => {
+            const path = `generated/${productId}/${label}-v${nextVersion}-${Date.now()}.png`;
+            const up = await supabaseAdmin.storage.from("product-images")
+              .upload(path, bytes, { contentType: "image/png", upsert: true });
+            if (up.error) throw up.error;
+            const { data: pub } = supabaseAdmin.storage.from("product-images").getPublicUrl(path);
+            return pub.publicUrl;
+          };
+
+          const [studioBuf, installedBuf] = await Promise.all([
+            genImage(studioPrompt),
+            genImage(installedPrompt),
+          ]);
+          const [studioUrl, installedUrl] = await Promise.all([
+            uploadOne("studio", studioBuf),
+            uploadOne("installed", installedBuf),
+          ]);
+
+          // Demote any previously primary generated assets.
+          await supabaseAdmin.from("product_assets")
+            .update({ is_primary: false })
+            .eq("product_id", productId)
+            .eq("generated_by_ai", true);
+
+          await supabaseAdmin.from("product_assets").insert([
+            {
+              product_id: productId, asset_type: "studio", asset_url: studioUrl,
+              generated_by_ai: true, is_primary: true,
+              generation_version: nextVersion,
+              metadata: { provider: "lovable-gemini", model: "google/gemini-3.1-flash-image", prompt: studioPrompt },
+            },
+            {
+              product_id: productId, asset_type: "installed", asset_url: installedUrl,
+              generated_by_ai: true, is_primary: false,
+              generation_version: nextVersion,
+              metadata: { provider: "lovable-gemini", model: "google/gemini-3.1-flash-image", prompt: installedPrompt },
+            },
+          ]);
+
+          await supabase.from("products").update({
+            generated_studio_image: studioUrl,
+            generated_installed_image: installedUrl,
+          } as any).eq("id", productId);
+
+          result.mode = "gemini";
+          result.studio = studioUrl;
+          result.installed = installedUrl;
         } else if (jt === "search_index") {
           await supabase.rpc("rebuild_search_index" as any, { _product_id: productId } as any);
           result.rebuilt = true;
