@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { enqueueAiPipeline } from "@/lib/pipeline";
+import { runProductPipeline } from "@/lib/ai-pipeline.functions";
 import { ImageUploader, ImageTile, publicImageUrl, deleteStorageObject } from "@/components/ImageUploader";
 
 type ImageMode = "manual" | "ai" | "hybrid";
@@ -137,7 +138,14 @@ function WizardPage() {
       await supabase.from("product_assets").insert(rows as any);
     }
     if (data?.id && imageMode !== "manual") {
-      try { await enqueueAiPipeline(data.id); } catch (e: any) { toast.error("Pipeline queue failed: " + e.message); }
+      try {
+        await enqueueAiPipeline(data.id);
+        // Fire-and-forget execution so the wizard closes quickly.
+        runProductPipeline({ data: { productId: data.id } }).catch((e: any) => {
+          console.error("Pipeline execution failed", e);
+          toast.error("AI pipeline failed: " + (e?.message ?? "unknown"));
+        });
+      } catch (e: any) { toast.error("Pipeline queue failed: " + e.message); }
     }
     setSaving(false);
     toast.success(imageMode === "manual" ? "Product created" : "Product created & AI pipeline queued");
