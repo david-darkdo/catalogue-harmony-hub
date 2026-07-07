@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireAdmin } from "@/integrations/supabase/admin-middleware";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 type JobType =
   | "understanding"
@@ -46,7 +46,7 @@ async function tryJSON<T = any>(prompt: string, system: string): Promise<T | nul
  * and finally rebuilding search_index + flipping processing_state.
  */
 export const runProductPipeline = createServerFn({ method: "POST" })
-  .middleware([requireAdmin])
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: { productId: string }) => {
     if (!data?.productId) throw new Error("productId required");
     return data;
