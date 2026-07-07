@@ -46,7 +46,7 @@ async function tryJSON<T = any>(prompt: string, system: string): Promise<T | nul
  * and finally rebuilding search_index + flipping processing_state.
  */
 export const runProductPipeline = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAdmin])
   .inputValidator((data: { productId: string }) => {
     if (!data?.productId) throw new Error("productId required");
     return data;
