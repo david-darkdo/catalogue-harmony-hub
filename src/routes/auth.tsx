@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { mergeGuestIntoUser } from "@/lib/collection";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -64,19 +63,16 @@ function AuthPage() {
 
   const google = async () => {
     setBusy(true);
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin,
+      },
     });
-    if (result.error) {
-      toast.error("Google sign-in failed");
+    if (error) {
+      toast.error("Google sign-in failed: " + error.message);
       setBusy(false);
-      return;
     }
-    if (result.redirected) return;
-    // Tokens received — session set
-    const { data } = await supabase.auth.getUser();
-    if (data.user) await mergeGuestIntoUser(data.user.id);
-    navigate({ to: "/collection" });
   };
 
   return (

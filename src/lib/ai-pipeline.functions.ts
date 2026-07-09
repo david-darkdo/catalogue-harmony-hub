@@ -9,16 +9,16 @@ type JobType =
   | "image_generation"
   | "faq_generation";
 
-const LOVABLE_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 
 async function callLLM(prompt: string, system: string): Promise<string> {
-  const key = process.env.LOVABLE_API_KEY;
-  if (!key) throw new Error("LOVABLE_API_KEY missing");
-  const res = await fetch(LOVABLE_URL, {
+  const key = process.env.GEMINI_API_KEY || process.env.LOVABLE_API_KEY;
+  if (!key) throw new Error("GEMINI_API_KEY missing");
+  const res = await fetch(GEMINI_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: "gemini-2.5-flash",
       messages: [
         { role: "system", content: system },
         { role: "user", content: prompt },
@@ -27,7 +27,7 @@ async function callLLM(prompt: string, system: string): Promise<string> {
   });
   if (!res.ok) {
     const t = await res.text().catch(() => "");
-    throw new Error(`AI gateway ${res.status}: ${t.slice(0, 200)}`);
+    throw new Error(`Gemini API ${res.status}: ${t.slice(0, 200)}`);
   }
   const j: any = await res.json();
   return j?.choices?.[0]?.message?.content ?? "";
@@ -148,7 +148,7 @@ export const runProductPipeline = createServerFn({ method: "POST" })
           await supabase.from("products").update({ faq: faq.faq ?? [], structured_data: structured } as any).eq("id", productId);
           result.count = (faq.faq ?? []).length;
         } else if (jt === "image_generation") {
-          // Real AI image generation via Lovable AI Gateway (Gemini image).
+          // Real AI image generation via direct Google Imagen 3.
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const { data: pu } = await supabase.from("product_understanding" as any)
             .select("*").eq("product_id", productId).maybeSingle();
@@ -168,37 +168,67 @@ export const runProductPipeline = createServerFn({ method: "POST" })
           const installedPrompt = `Photorealistic interior scene of a ${ctxLabel} featuring ${desc} elegantly installed in situ. Luxury Nigerian showroom aesthetic, natural window light, warm ambiance, editorial architectural photography, ultra-detailed, 4k.`;
 
           async function genImage(prompt: string): Promise<Buffer> {
-            const key = process.env.LOVABLE_API_KEY;
-            if (!key) throw new Error("LOVABLE_API_KEY missing");
-            const res = await fetch("https://ai.gateway.lovable.dev/v1/images/generations", {
+            const key = process.env.GEMINI_API_KEY || process.env.LOVABLE_API_KEY;
+            if (!key) throw new Error("GEMINI_API_KEY missing");
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key=${key}`, {
               method: "POST",
-              headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+              headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                model: "google/gemini-3.1-flash-image",
-                messages: [{ role: "user", content: prompt }],
-                modalities: ["image", "text"],
+                numberOfImages: 1,
+                outputMimeType: "image/png",
+                aspectRatio: "1:1",
+                prompt: prompt,
               }),
             });
             if (!res.ok) {
               const t = await res.text().catch(() => "");
-              throw new Error(`Image gateway ${res.status}: ${t.slice(0, 200)}`);
+              throw new Error(`Imagen API ${res.status}: ${t.slice(0, 200)}`);
             }
             const j: any = await res.json();
-            const b64 = j?.data?.[0]?.b64_json
-              ?? j?.choices?.[0]?.message?.images?.[0]?.image_url?.url?.split(",")[1]
-              ?? null;
-            if (!b64) throw new Error("No image data returned");
+            const b64 = j?.generatedImages?.[0]?.image?.imageBytes;
+            if (!b64) throw new Error("No image data returned from Imagen");
             return Buffer.from(b64, "base64");
           }
 
           const nextVersion = (product.generation_version ?? 0) + 1;
           const uploadOne = async (label: "studio" | "installed", bytes: Buffer) => {
-            const path = `generated/${productId}/${label}-v${nextVersion}-${Date.now()}.png`;
-            const up = await supabaseAdmin.storage.from("product-images")
-              .upload(path, bytes, { contentType: "image/png", upsert: true });
-            if (up.error) throw up.error;
-            const { data: pub } = supabaseAdmin.storage.from("product-images").getPublicUrl(path);
-            return pub.publicUrl;
+            const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDINARY_CLOUD_NAME;
+            const apiKey = process.env.CLOUDINARY_API_KEY;
+            const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+            if (!cloudName || !apiKey || !apiSecret) {
+              throw new Error("Missing Cloudinary environment configuration on server");
+            }
+
+            const crypto = await import("crypto");
+            const timestamp = Math.round(Date.now() / 1000);
+            const folder = `products/${productId}`;
+
+            const paramString = `folder=${folder}&timestamp=${timestamp}`;
+            const signature = crypto
+              .createHash("sha1")
+              .update(paramString + apiSecret)
+              .digest("hex");
+
+            const formData = new URLSearchParams();
+            formData.append("file", `data:image/png;base64,${bytes.toString("base64")}`);
+            formData.append("api_key", apiKey);
+            formData.append("timestamp", String(timestamp));
+            formData.append("folder", folder);
+            formData.append("signature", signature);
+
+            const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+              method: "POST",
+              body: formData,
+            });
+
+            if (!res.ok) {
+              const text = await res.text();
+              throw new Error(`Cloudinary server-side upload failed: ${text}`);
+            }
+
+            const data = await res.json();
+            return data.secure_url;
           };
 
           const [studioBuf, installedBuf] = await Promise.all([
@@ -221,13 +251,13 @@ export const runProductPipeline = createServerFn({ method: "POST" })
               product_id: productId, asset_type: "studio", asset_url: studioUrl,
               generated_by_ai: true, is_primary: true,
               generation_version: nextVersion,
-              metadata: { provider: "lovable-gemini", model: "google/gemini-3.1-flash-image", prompt: studioPrompt },
+              metadata: { provider: "google-imagen", model: "imagen-3.0-generate-002", prompt: studioPrompt },
             },
             {
               product_id: productId, asset_type: "installed", asset_url: installedUrl,
               generated_by_ai: true, is_primary: false,
               generation_version: nextVersion,
-              metadata: { provider: "lovable-gemini", model: "google/gemini-3.1-flash-image", prompt: installedPrompt },
+              metadata: { provider: "google-imagen", model: "imagen-3.0-generate-002", prompt: installedPrompt },
             },
           ]);
 
@@ -236,7 +266,7 @@ export const runProductPipeline = createServerFn({ method: "POST" })
             generated_installed_image: installedUrl,
           } as any).eq("id", productId);
 
-          result.mode = "gemini";
+          result.mode = "imagen";
           result.studio = studioUrl;
           result.installed = installedUrl;
         } else if (jt === "search_index") {

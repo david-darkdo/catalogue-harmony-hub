@@ -2,26 +2,44 @@ import { useRef, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { UploadCloud, Loader2, X, Star, Download, RefreshCw } from "lucide-react";
-
-const BUCKET = "product-images";
+import { deleteCloudinaryImage } from "@/lib/cloudinary";
 
 export function publicImageUrl(path: string | null | undefined): string | null {
   if (!path) return null;
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  // Fallback to legacy Supabase storage url if it's a relative path key
+  const BUCKET = "product-images";
   const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
   return data.publicUrl;
 }
 
 async function uploadOne(file: File, productId?: string): Promise<string> {
-  const ext = file.name.split(".").pop() || "jpg";
-  const key = `${productId ?? "unassigned"}/${crypto.randomUUID()}.${ext}`;
-  const { error } = await supabase.storage.from(BUCKET).upload(key, file, {
-    cacheControl: "3600",
-    upsert: false,
-    contentType: file.type || undefined,
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+  const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+  if (!cloudName || !uploadPreset) {
+    throw new Error("Missing Cloudinary configuration (VITE_CLOUDINARY_CLOUD_NAME / VITE_CLOUDINARY_UPLOAD_PRESET)");
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", uploadPreset);
+  if (productId) {
+    formData.append("folder", `products/${productId}`);
+  }
+
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+    method: "POST",
+    body: formData,
   });
-  if (error) throw error;
-  return key;
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Cloudinary upload failed: ${text}`);
+  }
+
+  const data = await res.json();
+  return data.secure_url;
 }
 
 /**
@@ -191,6 +209,16 @@ export function ImageTile({
 }
 
 export async function deleteStorageObject(path: string) {
-  if (!path || path.startsWith("http")) return;
-  await supabase.storage.from(BUCKET).remove([path]);
+  if (!path) return;
+  if (path.startsWith("http://") || path.startsWith("https://")) {
+    try {
+      await deleteCloudinaryImage({ url: path });
+    } catch (e) {
+      console.error("Failed to delete image from Cloudinary:", e);
+    }
+  } else {
+    // Fallback to legacy Supabase storage removal
+    const BUCKET = "product-images";
+    await supabase.storage.from(BUCKET).remove([path]);
+  }
 }
