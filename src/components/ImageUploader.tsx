@@ -212,7 +212,7 @@ export async function deleteStorageObject(path: string) {
   if (!path) return;
   if (path.startsWith("http://") || path.startsWith("https://")) {
     try {
-      await deleteCloudinaryImage({ url: path });
+      await deleteCloudinaryImage({ data: { url: path } });
     } catch (e) {
       console.error("Failed to delete image from Cloudinary:", e);
     }
