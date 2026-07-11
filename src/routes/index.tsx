@@ -47,9 +47,21 @@ export const Route = createFileRoute("/")({
     ],
   }),
   component: FeedPage,
-  errorComponent: ({ error }) => (
-    <div className="p-6 text-sm text-destructive">{error.message}</div>
-  ),
+  errorComponent: ({ error }) => {
+    const rawUrl = typeof process !== "undefined" ? process.env.SUPABASE_URL : "no process";
+    const rawKey = typeof process !== "undefined" ? process.env.SUPABASE_PUBLISHABLE_KEY : "no process";
+    const viteUrl = import.meta.env.VITE_SUPABASE_URL || "no viteUrl";
+    return (
+      <div className="p-6 text-sm text-destructive font-mono">
+        <div>Error: {error.message}</div>
+        <div className="mt-4 text-xs text-muted-foreground border-t border-destructive/20 pt-4">
+          <div>process.env.SUPABASE_URL: {rawUrl}</div>
+          <div>process.env.SUPABASE_PUBLISHABLE_KEY: {rawKey ? rawKey.substring(0, 15) + "..." : "none"}</div>
+          <div>VITE_SUPABASE_URL: {viteUrl}</div>
+        </div>
+      </div>
+    );
+  },
 });
 
 function FeedPage() {
