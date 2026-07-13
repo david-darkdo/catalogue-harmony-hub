@@ -12,8 +12,16 @@ type JobType =
 const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
 
 async function callLLM(prompt: string, system: string): Promise<string> {
+  const hasGeminiKey = !!process.env.GEMINI_API_KEY;
+  const hasLovableKey = !!process.env.LOVABLE_API_KEY;
   const key = process.env.GEMINI_API_KEY || process.env.LOVABLE_API_KEY;
+  
   if (!key) throw new Error("GEMINI_API_KEY missing");
+  
+  const keyOrigin = process.env.GEMINI_API_KEY ? "GEMINI_API_KEY" : "LOVABLE_API_KEY";
+  const keyPrefix = key.slice(0, 6) + "..." + key.slice(-4);
+  const keyLength = key.length;
+
   const res = await fetch(GEMINI_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
@@ -27,7 +35,7 @@ async function callLLM(prompt: string, system: string): Promise<string> {
   });
   if (!res.ok) {
     const t = await res.text().catch(() => "");
-    throw new Error(`Gemini API ${res.status}: ${t.slice(0, 200)}`);
+    throw new Error(`Gemini API ${res.status} [Origin: ${keyOrigin}, Prefix: ${keyPrefix}, Len: ${keyLength}]: ${t.slice(0, 200)}`);
   }
   const j: any = await res.json();
   return j?.choices?.[0]?.message?.content ?? "";
