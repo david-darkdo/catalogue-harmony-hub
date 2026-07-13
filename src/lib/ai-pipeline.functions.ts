@@ -94,20 +94,18 @@ async function interpolatePrompt(supabase: any, templateText: string, product: a
   let categoryName = "premium material";
   let typeName = "product";
 
-  if (contextId) {
-    const { data } = await supabase.from("installation_contexts").select("name").eq("id", contextId).maybeSingle();
-    if (data?.name) contextName = data.name;
-  }
-  
-  if (product.category_id) {
-    const { data } = await supabase.from("categories").select("name").eq("id", product.category_id).maybeSingle();
-    if (data?.name) categoryName = data.name;
-  }
+  const [contextRes, categoryRes, typeRes, settingsRes] = await Promise.all([
+    contextId ? supabase.from("installation_contexts").select("name").eq("id", contextId).maybeSingle() : Promise.resolve({ data: null }),
+    product.category_id ? supabase.from("categories").select("name").eq("id", product.category_id).maybeSingle() : Promise.resolve({ data: null }),
+    product.type_id ? supabase.from("product_types").select("name").eq("id", product.type_id).maybeSingle() : Promise.resolve({ data: null }),
+    supabase.from("app_settings").select("*").limit(1).maybeSingle()
+  ]);
 
-  if (product.type_id) {
-    const { data } = await supabase.from("product_types").select("name").eq("id", product.type_id).maybeSingle();
-    if (data?.name) typeName = data.name;
-  }
+  if (contextRes.data?.name) contextName = contextRes.data.name;
+  if (categoryRes.data?.name) categoryName = categoryRes.data.name;
+  if (typeRes.data?.name) typeName = typeRes.data.name;
+
+  const settings = settingsRes.data;
 
   // Handle detected attributes fallback from product_understanding
   let material = product.material;
@@ -133,7 +131,11 @@ async function interpolatePrompt(supabase: any, templateText: string, product: a
     .replace(/{size}/g, size ?? "")
     .replace(/{context}/g, contextName)
     .replace(/{category}/g, categoryName)
-    .replace(/{type}/g, typeName);
+    .replace(/{type}/g, typeName)
+    .replace(/{company_name}/g, "Enreach Concepts")
+    .replace(/{company_email}/g, settings?.company_email ?? "")
+    .replace(/{company_address}/g, settings?.company_address ?? "")
+    .replace(/{company_phone}/g, settings?.sales_whatsapp ?? settings?.support_whatsapp ?? "");
 }
 
 /**
