@@ -140,6 +140,7 @@ async function interpolatePrompt(supabase: any, templateText: string, product: a
     .replace(/{context}/g, contextName)
     .replace(/{category}/g, categoryName)
     .replace(/{type}/g, typeName)
+    .replace(/{product_type}/g, typeName)
     .replace(/{company_name}/g, "Enreach Concepts")
     .replace(/{company_email}/g, settings?.company_email ?? "")
     .replace(/{company_address}/g, settings?.company_address ?? "")
