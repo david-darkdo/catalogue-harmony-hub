@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { getAIProvider } from "./ai-providers";
 
 type JobType =
   | "understanding"
@@ -9,36 +10,9 @@ type JobType =
   | "image_generation"
   | "faq_generation";
 
-const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-
 async function callLLM(prompt: string, system: string): Promise<string> {
-  const hasGeminiKey = !!process.env.GEMINI_API_KEY;
-  const hasLovableKey = !!process.env.LOVABLE_API_KEY;
-  const key = process.env.GEMINI_API_KEY || process.env.LOVABLE_API_KEY;
-  
-  if (!key) throw new Error("GEMINI_API_KEY missing");
-  
-  const keyOrigin = process.env.GEMINI_API_KEY ? "GEMINI_API_KEY" : "LOVABLE_API_KEY";
-  const keyPrefix = key.slice(0, 6) + "..." + key.slice(-4);
-  const keyLength = key.length;
-
-  const res = await fetch(GEMINI_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-    body: JSON.stringify({
-      model: "gemini-1.5-flash",
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: prompt },
-      ],
-    }),
-  });
-  if (!res.ok) {
-    const t = await res.text().catch(() => "");
-    throw new Error(`Gemini API ${res.status} [Origin: ${keyOrigin}, Prefix: ${keyPrefix}, Len: ${keyLength}]: ${t.slice(0, 200)}`);
-  }
-  const j: any = await res.json();
-  return j?.choices?.[0]?.message?.content ?? "";
+  const provider = getAIProvider("gemini");
+  return provider.callLLM(prompt, system);
 }
 
 async function tryJSON<T = any>(prompt: string, system: string): Promise<T | null> {
@@ -67,14 +41,84 @@ async function resolvePromptTemplate(supabase: any, product: any) {
     }
   }
   
+  // Query all active templates from database
+  const { data: activeTemplates } = await supabase
+    .from("ai_prompt_templates")
+    .select("*")
+    .eq("is_active", true);
+  
   let template: any = null;
-  if (contextId) {
-    const { data } = await supabase
-      .from("ai_prompt_templates")
-      .select("*")
-      .eq("installation_context_id", contextId)
-      .maybeSingle();
-    template = data;
+  
+  if (activeTemplates && activeTemplates.length > 0) {
+    // Scoring routing engine
+    const scored = activeTemplates.map((t: any) => {
+      let score = 0;
+      let disqualified = false;
+      
+      // Brand Override Check
+      if (t.brand_override) {
+        if (product.brand && t.brand_override.toLowerCase() === product.brand.toLowerCase()) {
+          score += 100;
+        } else {
+          disqualified = true; // mismatch disqualifies
+        }
+      }
+      
+      // Subcategory Match
+      if (t.subcategory_id) {
+        if (product.subcategory_id && t.subcategory_id === product.subcategory_id) {
+          score += 50;
+        } else {
+          disqualified = true;
+        }
+      }
+      
+      // Category Match
+      if (t.category_id) {
+        if (product.category_id && t.category_id === product.category_id) {
+          score += 30;
+        } else {
+          disqualified = true;
+        }
+      }
+      
+      // Product Type Match
+      if (t.product_type_id) {
+        if (product.type_id && t.product_type_id === product.type_id) {
+          score += 15;
+        } else {
+          disqualified = true;
+        }
+      }
+      
+      // Context Match
+      if (t.installation_context_id) {
+        if (contextId && t.installation_context_id === contextId) {
+          score += 10;
+        } else {
+          disqualified = true;
+        }
+      }
+      
+      return { template: t, score, disqualified };
+    });
+    
+    // Filter and Sort by Score (desc), Priority (desc), Version (desc)
+    const valid = scored
+      .filter((s: any) => !s.disqualified)
+      .sort((a: any, b: any) => {
+        if (b.score !== a.score) return b.score - a.score;
+        const prioB = b.template.priority || 0;
+        const prioA = a.template.priority || 0;
+        if (prioB !== prioA) return prioB - prioA;
+        const verB = b.template.version || 1;
+        const verA = a.template.version || 1;
+        return verB - verA;
+      });
+      
+    if (valid.length > 0) {
+      template = valid[0].template;
+    }
   }
   
   if (!template) {
@@ -307,29 +351,7 @@ export const runProductPipeline = createServerFn({ method: "POST" })
             installedPrompt += `\n\nAdditional Directives: ${familyOverride}`;
           }
 
-          async function genImage(prompt: string): Promise<Buffer> {
-            const key = process.env.GEMINI_API_KEY || process.env.LOVABLE_API_KEY;
-            if (!key) throw new Error("GEMINI_API_KEY missing");
-            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key=${key}`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                numberOfImages: 1,
-                outputMimeType: "image/png",
-                aspectRatio: "1:1",
-                prompt: prompt,
-              }),
-            });
-            if (!res.ok) {
-              const t = await res.text().catch(() => "");
-              throw new Error(`Imagen API ${res.status}: ${t.slice(0, 200)}`);
-            }
-            const j: any = await res.json();
-            const b64 = j?.generatedImages?.[0]?.image?.imageBytes;
-            if (!b64) throw new Error("No image data returned from Imagen");
-            return Buffer.from(b64, "base64");
-          }
-
+          const provider = getAIProvider("gemini");
           const nextVersion = (product.generation_version ?? 0) + 1;
           const uploadOne = async (label: "studio" | "installed", bytes: Buffer) => {
             const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDINARY_CLOUD_NAME;
@@ -372,8 +394,8 @@ export const runProductPipeline = createServerFn({ method: "POST" })
           };
 
           const [studioBuf, installedBuf] = await Promise.all([
-            genImage(studioPrompt),
-            genImage(installedPrompt),
+            provider.generateImage(studioPrompt),
+            provider.generateImage(installedPrompt),
           ]);
           const [studioUrl, installedUrl] = await Promise.all([
             uploadOne("studio", studioBuf),

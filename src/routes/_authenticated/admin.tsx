@@ -3,7 +3,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
-import { Search, LayoutDashboard, Briefcase, Package, Layers, Users, FolderHeart, Mail, Activity } from "lucide-react";
+import { Search, LayoutDashboard, Briefcase, Package, Layers, Users, FolderHeart, Mail, Activity, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Admin — Stoneworks" }] }),
@@ -55,6 +55,7 @@ function AdminLayout() {
     { to: "/admin/products" as const, label: "Products", icon: Package, active: pathname.startsWith("/admin/products") },
     { to: "/admin/pipeline" as const, label: "Pipeline", icon: Activity, active: pathname.startsWith("/admin/pipeline") },
     { to: "/admin/hierarchy" as const, label: "Hierarchy", icon: Layers, active: pathname.startsWith("/admin/hierarchy") },
+    { to: "/admin/ai-templates" as const, label: "AI Templates", icon: Sparkles, active: pathname.startsWith("/admin/ai-templates") },
     { to: "/admin/customers" as const, label: "Customers", icon: Users, active: pathname.startsWith("/admin/customers") },
     { to: "/admin/collections" as const, label: "Collections", icon: FolderHeart, active: pathname.startsWith("/admin/collections") },
     { to: "/admin/email" as const, label: "Email", icon: Mail, active: pathname.startsWith("/admin/email") },

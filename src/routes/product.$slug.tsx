@@ -28,13 +28,36 @@ export const Route = createFileRoute("/product/$slug")({
   loader: async ({ context, params }) => {
     const product = await context.queryClient.ensureQueryData(productQuery(params.slug));
     context.queryClient.ensureQueryData(relatedQuery(product.family_id, product.id));
+    return { product };
   },
-  head: ({ params }) => ({
-    meta: [
-      { title: `${params.slug.replace(/-/g, " ")} — Stoneworks` },
-      { name: "description", content: "Premium building material details." },
-    ],
-  }),
+  head: ({ loaderData }) => {
+    const product = loaderData?.product;
+    const title = product?.seo_title || `${product?.name || "Product"} — Stoneworks`;
+    const desc = product?.seo_description || product?.short_description || "Premium building material details.";
+    const imageUrl = product?.generated_studio_image || product?.image_url || "";
+    const canonical = `https://showroom.enreach.concepts/product/${product?.slug || ""}`;
+
+    return {
+      meta: [
+        { title: title },
+        { name: "description", content: desc },
+        // Open Graph / Facebook
+        { property: "og:type", content: "product" },
+        { property: "og:title", content: title },
+        { property: "og:description", content: desc },
+        { property: "og:image", content: imageUrl ? publicImageUrl(imageUrl) : "" },
+        { property: "og:url", content: canonical },
+        // Twitter Card
+        { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:title", content: title },
+        { name: "twitter:description", content: desc },
+        { name: "twitter:image", content: imageUrl ? publicImageUrl(imageUrl) : "" },
+      ],
+      links: [
+        { rel: "canonical", href: canonical }
+      ]
+    };
+  },
   component: ProductPage,
   notFoundComponent: () => (
     <AppShell>
@@ -61,8 +84,41 @@ function ProductPage() {
   const studio = publicImageUrl(product.generated_studio_image) || publicImageUrl(product.image_url);
   const installed = publicImageUrl(product.generated_installed_image) || publicImageUrl(product.image_url);
 
+  const productSchema = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": product.name,
+    "image": [studio, installed].filter(Boolean),
+    "description": product.generated_description || product.short_description || "",
+    "sku": product.code,
+    "mpn": product.code,
+    "brand": {
+      "@type": "Brand",
+      "name": product.brand || "Stoneworks"
+    },
+    "offers": {
+      "@type": "Offer",
+      "url": `https://showroom.enreach.concepts/product/${product.slug}`,
+      "priceCurrency": "USD",
+      "price": product.price,
+      "availability": "https://schema.org/InStock",
+      "itemCondition": "https://schema.org/NewCondition"
+    }
+  };
+
   return (
     <AppShell>
+      {/* Structured Data JSON-LD Injections */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }}
+      />
+      {product.structured_data && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(product.structured_data) }}
+        />
+      )}
       <div className="container-app pt-2">
         <Link
           to="/"
