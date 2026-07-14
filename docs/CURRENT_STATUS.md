@@ -19,3 +19,9 @@
 ## Known Blockers & Technical Debt
 *   **Google Auth Credentials**: The Google Auth Provider is disabled in the Supabase Dashboard. This requires manual input of the Google OAuth Client ID and Secret by the project owner.
 *   **Stalled Jobs**: Stalled jobs must be manually set to pending using the database `retry_ai_job` RPC or the "Run now" button in the pipeline interface.
+
+## AI Prompt System Audit (July 2026)
+*   **Prompt Manager UI**: Active at route `/admin/prompts` and fully visible in the admin shell header navigation.
+*   **Database Sync**: Verified direct read/write operations against the `ai_prompt_templates` table. Saves are committed instantly via Supabase RPC/client.
+*   **Pipeline Template Loading**: Fully implemented. The queue worker automatically selects templates corresponding to the product's `installation_context_id`.
+*   **Taxonomy & Variable Interpolation**: Aligned UI preview sandbox and backend pipeline. 8 specific tokens are fully supported: `{product_name}`, `{product_type}`, `{category}`, `{brand}`, `{material}`, `{finish}`, `{company_name}` (with dynamic email, address, and phone fallbacks from `app_settings`), and `{context}`.
