@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { getAIProvider } from "./ai-providers";
+import { getAIProvider, AIProviderError } from "./ai-providers";
 
 type JobType =
   | "understanding"
@@ -451,18 +451,28 @@ export const runProductPipeline = createServerFn({ method: "POST" })
         });
         done[jt] = true;
       } catch (e: any) {
+        const errorLog: any = {
+          message: String(e?.message ?? e),
+          stack: String(e?.stack ?? ""),
+          provider: e?.provider || process.env.ACTIVE_AI_PROVIDER || "gemini",
+          model: e?.model || ((process.env.ACTIVE_AI_PROVIDER === "openai") ? "gpt-4o-mini" : "gemini-1.5-flash"),
+          prompt: lastCompiledPrompt,
+          cloudinary_url: product.image_url,
+        };
+
+        if (e instanceof AIProviderError || e?.name === "AIProviderError") {
+          errorLog.endpoint_url = e.url;
+          errorLog.request_headers = e.requestHeaders;
+          errorLog.request_body = e.requestBody;
+          errorLog.response_body = e.responseBody;
+          errorLog.status = e.status;
+        }
+
         await setJob(job.id, {
           status: "failed",
           completed_at: new Date().toISOString(),
           execution_time_ms: Date.now() - started,
-          error_log: {
-            message: String(e?.message ?? e),
-            stack: String(e?.stack ?? ""),
-            provider: process.env.ACTIVE_AI_PROVIDER || "gemini",
-            model: (process.env.ACTIVE_AI_PROVIDER === "openai") ? "gpt-4o-mini" : "gemini-1.5-flash",
-            prompt: lastCompiledPrompt,
-            cloudinary_url: product.image_url,
-          },
+          error_log: errorLog,
           retry_count: (job.retry_count ?? 0) + 1,
         });
         throw e;

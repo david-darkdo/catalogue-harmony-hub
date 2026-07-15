@@ -4,7 +4,37 @@ export interface AIProvider {
   generateImage(prompt: string): Promise<Buffer>;
 }
 
-// 1. Google Gemini + Imagen Provider (Native REST API Endpoint)
+export class AIProviderError extends Error {
+  provider: string;
+  model: string;
+  url: string;
+  requestHeaders: any;
+  requestBody: any;
+  responseBody: string;
+  status: number;
+
+  constructor(message: string, params: {
+    provider: string;
+    model: string;
+    url: string;
+    requestHeaders: any;
+    requestBody: any;
+    responseBody: string;
+    status: number;
+  }) {
+    super(message);
+    this.name = "AIProviderError";
+    this.provider = params.provider;
+    this.model = params.model;
+    this.url = params.url;
+    this.requestHeaders = params.requestHeaders;
+    this.requestBody = params.requestBody;
+    this.responseBody = params.responseBody;
+    this.status = params.status;
+  }
+}
+
+// 1. Google Gemini + Imagen Provider (Dual routing for AI Studio vs Vertex AI)
 export class GeminiProvider implements AIProvider {
   name = "gemini";
 
@@ -12,30 +42,92 @@ export class GeminiProvider implements AIProvider {
     const key = process.env.GEMINI_API_KEY || process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("GEMINI_API_KEY environment variable is not defined");
 
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: prompt }]
-          }
-        ],
-        systemInstruction: {
-          parts: [{ text: systemPrompt }]
-        }
-      }),
-    });
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`Gemini Native API LLM Call Failed: ${text.slice(0, 200)}`);
+    const isVertex = key.startsWith("AQ");
+    const model = "gemini-1.5-flash";
+    
+    let url = "";
+    if (isVertex) {
+      const projectId = process.env.GCP_PROJECT_ID || "de-enreach-gemini-api-key";
+      const region = process.env.GCP_REGION || "us-central1";
+      url = `https://${region}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${region}/publishers/google/models/${model}:generateContent?key=${key}`;
+    } else {
+      url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
     }
 
-    const json: any = await res.json();
+    const requestHeaders = { "Content-Type": "application/json" };
+    const requestBody = {
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: prompt }]
+        }
+      ],
+      systemInstruction: {
+        parts: [{ text: systemPrompt }]
+      }
+    };
+
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: requestHeaders,
+        body: JSON.stringify(requestBody),
+      });
+    } catch (e: any) {
+      throw new AIProviderError(`Network connection failed: ${e.message}`, {
+        provider: this.name,
+        model,
+        url: url.replace(key, "HIDDEN_KEY"),
+        requestHeaders,
+        requestBody,
+        responseBody: "",
+        status: 0,
+      });
+    }
+
+    const responseBody = await res.text().catch(() => "");
+
+    if (!res.ok) {
+      throw new AIProviderError(`Google Gemini REST Call Failed [isVertex: ${isVertex}]`, {
+        provider: this.name,
+        model,
+        url: url.replace(key, "HIDDEN_KEY"),
+        requestHeaders,
+        requestBody,
+        responseBody,
+        status: res.status,
+      });
+    }
+
+    let json: any;
+    try {
+      json = JSON.parse(responseBody);
+    } catch {
+      throw new AIProviderError("Failed to parse response body as JSON", {
+        provider: this.name,
+        model,
+        url: url.replace(key, "HIDDEN_KEY"),
+        requestHeaders,
+        requestBody,
+        responseBody,
+        status: res.status,
+      });
+    }
+
     const textOut = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!textOut) throw new Error("No text content returned from Gemini API");
+    if (!textOut) {
+      throw new AIProviderError("No text content returned from Gemini candidate payload", {
+        provider: this.name,
+        model,
+        url: url.replace(key, "HIDDEN_KEY"),
+        requestHeaders,
+        requestBody,
+        responseBody,
+        status: res.status,
+      });
+    }
+
     return textOut;
   }
 
@@ -43,25 +135,98 @@ export class GeminiProvider implements AIProvider {
     const key = process.env.GEMINI_API_KEY || process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("GEMINI_API_KEY environment variable is not defined");
 
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key=${key}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        numberOfImages: 1,
-        outputMimeType: "image/png",
-        aspectRatio: "1:1",
-        prompt: prompt,
-      }),
-    });
+    const isVertex = key.startsWith("AQ");
+    const model = "imagen-3.0-generate-002";
 
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`Imagen Generation Failed: ${text.slice(0, 200)}`);
+    let url = "";
+    if (isVertex) {
+      const projectId = process.env.GCP_PROJECT_ID || "de-enreach-gemini-api-key";
+      const region = process.env.GCP_REGION || "us-central1";
+      url = `https://${region}-aiplatform.googleapis.com/v1/projects/${projectId}/locations/${region}/publishers/google/models/${model}:predict?key=${key}`;
+    } else {
+      url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateImages?key=${key}`;
     }
 
-    const json: any = await res.json();
-    const b64 = json?.generatedImages?.[0]?.image?.imageBytes;
-    if (!b64) throw new Error("No image bytes returned from Google Imagen API");
+    const requestHeaders = { "Content-Type": "application/json" };
+    const requestBody = isVertex 
+      ? {
+          instances: [{ prompt }],
+          parameters: {
+            sampleCount: 1,
+            aspectRatio: "1:1",
+            outputMimeType: "image/png"
+          }
+        }
+      : {
+          numberOfImages: 1,
+          outputMimeType: "image/png",
+          aspectRatio: "1:1",
+          prompt,
+        };
+
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: requestHeaders,
+        body: JSON.stringify(requestBody),
+      });
+    } catch (e: any) {
+      throw new AIProviderError(`Network connection failed: ${e.message}`, {
+        provider: this.name,
+        model,
+        url: url.replace(key, "HIDDEN_KEY"),
+        requestHeaders,
+        requestBody,
+        responseBody: "",
+        status: 0,
+      });
+    }
+
+    const responseBody = await res.text().catch(() => "");
+
+    if (!res.ok) {
+      throw new AIProviderError(`Imagen generation REST call failed`, {
+        provider: this.name,
+        model,
+        url: url.replace(key, "HIDDEN_KEY"),
+        requestHeaders,
+        requestBody,
+        responseBody,
+        status: res.status,
+      });
+    }
+
+    let json: any;
+    try {
+      json = JSON.parse(responseBody);
+    } catch {
+      throw new AIProviderError("Failed to parse image response body as JSON", {
+        provider: this.name,
+        model,
+        url: url.replace(key, "HIDDEN_KEY"),
+        requestHeaders,
+        requestBody,
+        responseBody,
+        status: res.status,
+      });
+    }
+
+    const b64 = isVertex
+      ? json?.predictions?.[0]?.bytesBase64Encoded
+      : json?.generatedImages?.[0]?.image?.imageBytes;
+
+    if (!b64) {
+      throw new AIProviderError("No base64 image bytes found in the Imagen response payload", {
+        provider: this.name,
+        model,
+        url: url.replace(key, "HIDDEN_KEY"),
+        requestHeaders,
+        requestBody,
+        responseBody,
+        status: res.status,
+      });
+    }
 
     return Buffer.from(b64, "base64");
   }
@@ -75,27 +240,68 @@ export class OpenAIProvider implements AIProvider {
     const key = process.env.OPENAI_API_KEY;
     if (!key) throw new Error("OPENAI_API_KEY environment variable is not defined");
 
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${key}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: prompt }
-        ]
-      })
-    });
+    const model = "gpt-4o-mini";
+    const url = "https://api.openai.com/v1/chat/completions";
+    const requestHeaders = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${key}`
+    };
+    const requestBody = {
+      model,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: prompt }
+      ]
+    };
 
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`OpenAI API LLM Call Failed: ${text.slice(0, 200)}`);
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: requestHeaders,
+        body: JSON.stringify(requestBody)
+      });
+    } catch (e: any) {
+      throw new AIProviderError(`Network connection failed: ${e.message}`, {
+        provider: this.name,
+        model,
+        url,
+        requestHeaders: { ...requestHeaders, Authorization: "Bearer HIDDEN_KEY" },
+        requestBody,
+        responseBody: "",
+        status: 0,
+      });
     }
 
-    const json: any = await res.json();
+    const responseBody = await res.text().catch(() => "");
+
+    if (!res.ok) {
+      throw new AIProviderError(`OpenAI API Chat Completion Call Failed`, {
+        provider: this.name,
+        model,
+        url,
+        requestHeaders: { ...requestHeaders, Authorization: "Bearer HIDDEN_KEY" },
+        requestBody,
+        responseBody,
+        status: res.status,
+      });
+    }
+
+    let json: any;
+    try {
+      json = JSON.parse(responseBody);
+    } catch {
+      throw new AIProviderError("Failed to parse response body as JSON", {
+        provider: this.name,
+        model,
+        url,
+        requestHeaders: { ...requestHeaders, Authorization: "Bearer HIDDEN_KEY" },
+        requestBody,
+        responseBody,
+        status: res.status,
+      });
+    }
+
     return json?.choices?.[0]?.message?.content ?? "";
   }
 
@@ -103,29 +309,80 @@ export class OpenAIProvider implements AIProvider {
     const key = process.env.OPENAI_API_KEY;
     if (!key) throw new Error("OPENAI_API_KEY environment variable is not defined");
 
-    const res = await fetch("https://api.openai.com/v1/images/generations", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${key}`
-      },
-      body: JSON.stringify({
-        model: "dall-e-3",
-        prompt: prompt,
-        n: 1,
-        size: "1024x1024",
-        response_format: "b64_json"
-      })
-    });
+    const model = "dall-e-3";
+    const url = "https://api.openai.com/v1/images/generations";
+    const requestHeaders = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${key}`
+    };
+    const requestBody = {
+      model,
+      prompt,
+      n: 1,
+      size: "1024x1024",
+      response_format: "b64_json"
+    };
 
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`OpenAI DALL-E Generation Failed: ${text.slice(0, 200)}`);
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: requestHeaders,
+        body: JSON.stringify(requestBody)
+      });
+    } catch (e: any) {
+      throw new AIProviderError(`Network connection failed: ${e.message}`, {
+        provider: this.name,
+        model,
+        url,
+        requestHeaders: { ...requestHeaders, Authorization: "Bearer HIDDEN_KEY" },
+        requestBody,
+        responseBody: "",
+        status: 0,
+      });
     }
 
-    const json: any = await res.json();
+    const responseBody = await res.text().catch(() => "");
+
+    if (!res.ok) {
+      throw new AIProviderError(`OpenAI DALL-E Image Generation Failed`, {
+        provider: this.name,
+        model,
+        url,
+        requestHeaders: { ...requestHeaders, Authorization: "Bearer HIDDEN_KEY" },
+        requestBody,
+        responseBody,
+        status: res.status,
+      });
+    }
+
+    let json: any;
+    try {
+      json = JSON.parse(responseBody);
+    } catch {
+      throw new AIProviderError("Failed to parse image response body as JSON", {
+        provider: this.name,
+        model,
+        url,
+        requestHeaders: { ...requestHeaders, Authorization: "Bearer HIDDEN_KEY" },
+        requestBody,
+        responseBody,
+        status: res.status,
+      });
+    }
+
     const b64 = json?.data?.[0]?.b64_json;
-    if (!b64) throw new Error("No image data returned from OpenAI DALL-E API");
+    if (!b64) {
+      throw new AIProviderError("No base64 image data returned from OpenAI DALL-E payload", {
+        provider: this.name,
+        model,
+        url,
+        requestHeaders: { ...requestHeaders, Authorization: "Bearer HIDDEN_KEY" },
+        requestBody,
+        responseBody,
+        status: res.status,
+      });
+    }
 
     return Buffer.from(b64, "base64");
   }

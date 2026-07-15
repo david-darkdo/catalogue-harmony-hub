@@ -328,6 +328,35 @@ function PipelinePage() {
                                           </a>
                                         </div>
                                       )}
+                                      {j.error_log.endpoint_url && (
+                                        <div className="text-muted-foreground font-mono text-[10px] break-all bg-background/50 p-1.5 rounded border border-border">
+                                          <strong>HTTP Request:</strong> POST {j.error_log.endpoint_url} {j.error_log.status !== undefined && `(Status: ${j.error_log.status})`}
+                                        </div>
+                                      )}
+                                      {j.error_log.request_headers && (
+                                        <details className="mt-1 cursor-pointer">
+                                          <summary className="font-semibold text-muted-foreground hover:text-foreground hover:underline">Show Request Headers</summary>
+                                          <pre className="mt-1 max-h-32 overflow-auto rounded bg-background border border-border p-2 text-[10px] text-muted-foreground whitespace-pre-wrap font-mono">
+                                            {JSON.stringify(j.error_log.request_headers, null, 2)}
+                                          </pre>
+                                        </details>
+                                      )}
+                                      {j.error_log.request_body && (
+                                        <details className="mt-1 cursor-pointer">
+                                          <summary className="font-semibold text-muted-foreground hover:text-foreground hover:underline">Show Request Body JSON</summary>
+                                          <pre className="mt-1 max-h-32 overflow-auto rounded bg-background border border-border p-2 text-[10px] text-muted-foreground whitespace-pre-wrap font-mono">
+                                            {JSON.stringify(j.error_log.request_body, null, 2)}
+                                          </pre>
+                                        </details>
+                                      )}
+                                      {j.error_log.response_body && (
+                                        <details className="mt-1 cursor-pointer" open>
+                                          <summary className="font-semibold text-destructive hover:underline">Show Raw Response Body</summary>
+                                          <pre className="mt-1 max-h-48 overflow-auto rounded bg-background border border-destructive/20 p-2 text-[10px] text-destructive whitespace-pre-wrap font-mono">
+                                            {j.error_log.response_body}
+                                          </pre>
+                                        </details>
+                                      )}
                                       {j.error_log.prompt && (
                                         <details className="mt-1 cursor-pointer">
                                           <summary className="font-semibold text-primary hover:underline">Show Final Compiled Prompt Sent</summary>
