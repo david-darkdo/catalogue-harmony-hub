@@ -11,7 +11,7 @@ type JobType =
   | "faq_generation";
 
 async function callLLM(prompt: string, system: string): Promise<string> {
-  const provider = getAIProvider("gemini");
+  const provider = getAIProvider();
   return provider.callLLM(prompt, system);
 }
 
@@ -357,7 +357,7 @@ export const runProductPipeline = createServerFn({ method: "POST" })
           }
           lastCompiledPrompt = `Studio: ${studioPrompt}\n\nInstalled: ${installedPrompt}`;
 
-          const provider = getAIProvider("gemini");
+          const provider = getAIProvider();
           const nextVersion = (product.generation_version ?? 0) + 1;
           const uploadOne = async (label: "studio" | "installed", bytes: Buffer) => {
             const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDINARY_CLOUD_NAME;
@@ -419,13 +419,13 @@ export const runProductPipeline = createServerFn({ method: "POST" })
               product_id: productId, asset_type: "studio", asset_url: studioUrl,
               generated_by_ai: true, is_primary: true,
               generation_version: nextVersion,
-              metadata: { provider: "google-imagen", model: "imagen-3.0-generate-002", prompt: studioPrompt },
+              metadata: { provider: provider.name, model: provider.name === "openai" ? "dall-e-3" : "imagen-3.0-generate-002", prompt: studioPrompt },
             },
             {
               product_id: productId, asset_type: "installed", asset_url: installedUrl,
               generated_by_ai: true, is_primary: false,
               generation_version: nextVersion,
-              metadata: { provider: "google-imagen", model: "imagen-3.0-generate-002", prompt: installedPrompt },
+              metadata: { provider: provider.name, model: provider.name === "openai" ? "dall-e-3" : "imagen-3.0-generate-002", prompt: installedPrompt },
             },
           ]);
 

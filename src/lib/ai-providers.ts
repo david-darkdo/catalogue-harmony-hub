@@ -401,8 +401,8 @@ export class ClaudeProvider implements AIProvider {
 
 // Registry Helper
 export function getAIProvider(providerName?: string): AIProvider {
-  const p = (providerName || process.env.ACTIVE_AI_PROVIDER || "gemini").toLowerCase();
-  if (p === "openai") return new OpenAIProvider();
+  const p = (providerName || process.env.ACTIVE_AI_PROVIDER || "openai").toLowerCase();
+  if (p === "gemini") return new GeminiProvider();
   if (p === "claude") return new ClaudeProvider();
-  return new GeminiProvider();
+  return new OpenAIProvider();
 }
