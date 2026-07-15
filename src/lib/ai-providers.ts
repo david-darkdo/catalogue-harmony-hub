@@ -1,3 +1,12 @@
+export interface AIProviderConfig {
+  activeProvider: string;
+  openaiLlmModel: string;
+  openaiImageModel: string;
+  openaiImageSize: string;
+  geminiLlmModel: string;
+  geminiImageModel: string;
+}
+
 export interface AIProvider {
   name: string;
   callLLM(prompt: string, systemPrompt: string): Promise<string>;
@@ -37,13 +46,18 @@ export class AIProviderError extends Error {
 // 1. Google Gemini + Imagen Provider (Dual routing for AI Studio vs Vertex AI)
 export class GeminiProvider implements AIProvider {
   name = "gemini";
+  config?: AIProviderConfig;
+
+  constructor(config?: AIProviderConfig) {
+    this.config = config;
+  }
 
   async callLLM(prompt: string, systemPrompt: string): Promise<string> {
     const key = process.env.GEMINI_API_KEY || process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("GEMINI_API_KEY environment variable is not defined");
 
     const isVertex = key.startsWith("AQ");
-    const model = process.env.GEMINI_LLM_MODEL || "gemini-1.5-flash";
+    const model = this.config?.geminiLlmModel || process.env.GEMINI_LLM_MODEL || "gemini-1.5-flash";
     
     let url = "";
     if (isVertex) {
@@ -136,7 +150,7 @@ export class GeminiProvider implements AIProvider {
     if (!key) throw new Error("GEMINI_API_KEY environment variable is not defined");
 
     const isVertex = key.startsWith("AQ");
-    const model = process.env.GEMINI_IMAGE_MODEL || "imagen-3.0-generate-002";
+    const model = this.config?.geminiImageModel || process.env.GEMINI_IMAGE_MODEL || "imagen-3.0-generate-002";
 
     let url = "";
     if (isVertex) {
@@ -235,12 +249,17 @@ export class GeminiProvider implements AIProvider {
 // 2. OpenAI Provider (GPT-4o-mini + DALL-E-3)
 export class OpenAIProvider implements AIProvider {
   name = "openai";
+  config?: AIProviderConfig;
+
+  constructor(config?: AIProviderConfig) {
+    this.config = config;
+  }
 
   async callLLM(prompt: string, systemPrompt: string): Promise<string> {
     const key = process.env.OPENAI_API_KEY;
     if (!key) throw new Error("OPENAI_API_KEY environment variable is not defined");
 
-    const model = process.env.OPENAI_LLM_MODEL || "gpt-4o-mini";
+    const model = this.config?.openaiLlmModel || process.env.OPENAI_LLM_MODEL || "gpt-4o-mini";
     const url = "https://api.openai.com/v1/chat/completions";
     const requestHeaders = {
       "Content-Type": "application/json",
@@ -309,8 +328,8 @@ export class OpenAIProvider implements AIProvider {
     const key = process.env.OPENAI_API_KEY;
     if (!key) throw new Error("OPENAI_API_KEY environment variable is not defined");
 
-    const model = process.env.OPENAI_IMAGE_MODEL || "dall-e-3";
-    const size = process.env.OPENAI_IMAGE_SIZE || "1024x1024";
+    const model = this.config?.openaiImageModel || process.env.OPENAI_IMAGE_MODEL || "dall-e-3";
+    const size = this.config?.openaiImageSize || process.env.OPENAI_IMAGE_SIZE || "1024x1024";
     const url = "https://api.openai.com/v1/images/generations";
     const requestHeaders = {
       "Content-Type": "application/json",
@@ -423,9 +442,9 @@ export class ClaudeProvider implements AIProvider {
 }
 
 // Registry Helper
-export function getAIProvider(providerName?: string): AIProvider {
-  const p = (providerName || process.env.ACTIVE_AI_PROVIDER || "openai").toLowerCase();
-  if (p === "gemini") return new GeminiProvider();
+export function getAIProvider(config?: AIProviderConfig): AIProvider {
+  const p = (config?.activeProvider || process.env.ACTIVE_AI_PROVIDER || "openai").toLowerCase();
+  if (p === "gemini") return new GeminiProvider(config);
   if (p === "claude") return new ClaudeProvider();
-  return new OpenAIProvider();
+  return new OpenAIProvider(config);
 }

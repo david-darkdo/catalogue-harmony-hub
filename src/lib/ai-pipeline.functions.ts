@@ -10,13 +10,12 @@ type JobType =
   | "image_generation"
   | "faq_generation";
 
-async function callLLM(prompt: string, system: string): Promise<string> {
-  const provider = getAIProvider();
+async function callLLM(provider: any, prompt: string, system: string): Promise<string> {
   return provider.callLLM(prompt, system);
 }
 
-async function tryJSON<T = any>(prompt: string, system: string): Promise<T | null> {
-  const raw = await callLLM(prompt + "\n\nReturn ONLY compact JSON.", system);
+async function tryJSON<T = any>(provider: any, prompt: string, system: string): Promise<T | null> {
+  const raw = await callLLM(provider, prompt + "\n\nReturn ONLY compact JSON.", system);
   const m = raw.match(/\{[\s\S]*\}/);
   if (!m) return null;
   try { return JSON.parse(m[0]) as T; } catch { return null; }
@@ -210,9 +209,21 @@ export const runProductPipeline = createServerFn({ method: "POST" })
       .from("products").select("*").eq("id", productId).maybeSingle();
     if (pErr || !product) throw new Error(pErr?.message ?? "Product not found");
 
+    const { data: settings } = await supabase.from("app_settings").select("*").limit(1).maybeSingle();
+    const config = settings ? {
+      activeProvider: settings.active_ai_provider || "openai",
+      openaiLlmModel: settings.openai_llm_model || "gpt-4o-mini",
+      openaiImageModel: settings.openai_image_model || "dall-e-3",
+      openaiImageSize: settings.openai_image_size || "1024x1024",
+      geminiLlmModel: settings.gemini_llm_model || "gemini-1.5-flash",
+      geminiImageModel: settings.gemini_image_model || "imagen-3.0-generate-002"
+    } : undefined;
+
+    const provider = getAIProvider(config);
+    const activeProviderName = provider.name.toLowerCase();
+
     // Validate active provider environment config
-    const activeProvider = (process.env.ACTIVE_AI_PROVIDER || "openai").toLowerCase();
-    if (activeProvider === "openai") {
+    if (activeProviderName === "openai") {
       if (!process.env.OPENAI_API_KEY) {
         const errMsg = "Configuration Error: OpenAI is the active provider, but OPENAI_API_KEY environment variable is missing.";
         await supabase.from("products").update({
@@ -221,7 +232,7 @@ export const runProductPipeline = createServerFn({ method: "POST" })
         } as any).eq("id", productId);
         return { ok: false, error: errMsg };
       }
-    } else if (activeProvider === "gemini") {
+    } else if (activeProviderName === "gemini") {
       if (!(process.env.GEMINI_API_KEY || process.env.LOVABLE_API_KEY)) {
         const errMsg = "Configuration Error: Gemini is the active provider, but GEMINI_API_KEY environment variable is missing.";
         await supabase.from("products").update({
@@ -230,7 +241,7 @@ export const runProductPipeline = createServerFn({ method: "POST" })
         } as any).eq("id", productId);
         return { ok: false, error: errMsg };
       }
-    } else if (activeProvider === "claude") {
+    } else if (activeProviderName === "claude") {
       if (!process.env.ANTHROPIC_API_KEY) {
         const errMsg = "Configuration Error: Claude is the active provider, but ANTHROPIC_API_KEY environment variable is missing.";
         await supabase.from("products").update({
@@ -240,7 +251,7 @@ export const runProductPipeline = createServerFn({ method: "POST" })
         return { ok: false, error: errMsg };
       }
     } else {
-      const errMsg = `Configuration Error: Unsupported active AI provider '${activeProvider}'.`;
+      const errMsg = `Configuration Error: Unsupported active AI provider '${activeProviderName}'.`;
       await supabase.from("products").update({
         processing_state: "error",
         error_log: { message: errMsg }
@@ -299,6 +310,7 @@ export const runProductPipeline = createServerFn({ method: "POST" })
           }
           lastCompiledPrompt = prompt;
           const parsed = await tryJSON<any>(
+            provider,
             prompt,
             "You are a product intelligence engine. Output strict JSON."
           ) ?? {};
@@ -315,7 +327,7 @@ export const runProductPipeline = createServerFn({ method: "POST" })
             detected_keywords: parsed.keywords ?? [],
             detected_tags: parsed.tags ?? [],
             confidence_score: parsed.confidence ?? 0.7,
-            provider: "lovable-gemini",
+            provider: provider.name,
           }, { onConflict: "product_id" } as any);
           // link installation context if we can
           if (parsed.installation_context) {
@@ -332,6 +344,7 @@ export const runProductPipeline = createServerFn({ method: "POST" })
           }
           lastCompiledPrompt = prompt;
           const text = await callLLM(
+            provider,
             prompt,
             "You are a luxury interiors copywriter. British English."
           );
@@ -345,6 +358,7 @@ export const runProductPipeline = createServerFn({ method: "POST" })
           }
           lastCompiledPrompt = prompt;
           const seo = await tryJSON<any>(
+            provider,
             prompt,
             "You are an SEO engineer. Output strict JSON."
           ) ?? {};
@@ -362,6 +376,7 @@ export const runProductPipeline = createServerFn({ method: "POST" })
           }
           lastCompiledPrompt = prompt;
           const faq = await tryJSON<any>(
+            provider,
             prompt,
             "You are a product expert. Output strict JSON."
           ) ?? { faq: [] };
@@ -376,105 +391,109 @@ export const runProductPipeline = createServerFn({ method: "POST" })
           await supabase.from("products").update({ faq: faq.faq ?? [], structured_data: structured } as any).eq("id", productId);
           result.count = (faq.faq ?? []).length;
         } else if (jt === "image_generation") {
-          // Real AI image generation via direct Google Imagen 3.
-          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-          const { data: pu } = await supabase.from("product_understanding" as any)
-            .select("*").eq("product_id", productId).maybeSingle();
-          const und: any = pu ?? {};
-          const ctxSlug = und.detected_installation_context ?? "luxury_showroom";
-          const ctxLabel = String(ctxSlug).replace(/^luxury_/, "").replace(/_/g, " ");
+          if (product.image_mode === "manual") {
+            result.mode = "manual";
+            result.skipped = true;
+            result.message = "Skipped AI image generation because the product's image mode is set to manual.";
+          } else {
+            const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+            const { data: pu } = await supabase.from("product_understanding" as any)
+              .select("*").eq("product_id", productId).maybeSingle();
+            const und: any = pu ?? {};
+            const ctxSlug = und.detected_installation_context ?? "luxury_showroom";
+            const ctxLabel = String(ctxSlug).replace(/^luxury_/, "").replace(/_/g, " ");
 
-          const rawStudio = resolvedTemplates.studio_prompt;
-          const rawInstalled = resolvedTemplates.installed_prompt;
-          let studioPrompt = await interpolatePrompt(supabase, rawStudio, product, resolvedTemplates.installation_context_id);
-          let installedPrompt = await interpolatePrompt(supabase, rawInstalled, product, resolvedTemplates.installation_context_id);
+            const rawStudio = resolvedTemplates.studio_prompt;
+            const rawInstalled = resolvedTemplates.installed_prompt;
+            let studioPrompt = await interpolatePrompt(supabase, rawStudio, product, resolvedTemplates.installation_context_id);
+            let installedPrompt = await interpolatePrompt(supabase, rawInstalled, product, resolvedTemplates.installation_context_id);
 
-          if (familyOverride) {
-            studioPrompt += `\n\nAdditional Directives: ${familyOverride}`;
-            installedPrompt += `\n\nAdditional Directives: ${familyOverride}`;
+            if (familyOverride) {
+              studioPrompt += `\n\nAdditional Directives: ${familyOverride}`;
+              installedPrompt += `\n\nAdditional Directives: ${familyOverride}`;
+            }
+            lastCompiledPrompt = `Studio: ${studioPrompt}\n\nInstalled: ${installedPrompt}`;
+
+            const nextVersion = (product.generation_version ?? 0) + 1;
+            const uploadOne = async (label: "studio" | "installed", bytes: Buffer) => {
+              const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDINARY_CLOUD_NAME;
+              const apiKey = process.env.CLOUDINARY_API_KEY;
+              const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+              if (!cloudName || !apiKey || !apiSecret) {
+                throw new Error("Missing Cloudinary environment configuration on server");
+              }
+
+              const crypto = await import("crypto");
+              const timestamp = Math.round(Date.now() / 1000);
+              const folder = `products/${productId}`;
+
+              const paramString = `folder=${folder}&timestamp=${timestamp}`;
+              const signature = crypto
+                .createHash("sha1")
+                .update(paramString + apiSecret)
+                .digest("hex");
+
+              const formData = new URLSearchParams();
+              formData.append("file", `data:image/png;base64,${bytes.toString("base64")}`);
+              formData.append("api_key", apiKey);
+              formData.append("timestamp", String(timestamp));
+              formData.append("folder", folder);
+              formData.append("signature", signature);
+
+              const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+                method: "POST",
+                body: formData,
+              });
+
+              if (!res.ok) {
+                const text = await res.text();
+                throw new Error(`Cloudinary server-side upload failed: ${text}`);
+              }
+
+              const data = await res.json();
+              return data.secure_url;
+            };
+
+            const [studioBuf, installedBuf] = await Promise.all([
+              provider.generateImage(studioPrompt),
+              provider.generateImage(installedPrompt),
+            ]);
+            const [studioUrl, installedUrl] = await Promise.all([
+              uploadOne("studio", studioBuf),
+              uploadOne("installed", installedBuf),
+            ]);
+
+            // Demote any previously primary generated assets.
+            await supabaseAdmin.from("product_assets")
+              .update({ is_primary: false })
+              .eq("product_id", productId)
+              .eq("generated_by_ai", true);
+
+            await supabaseAdmin.from("product_assets").insert([
+              {
+                product_id: productId, asset_type: "studio", asset_url: studioUrl,
+                generated_by_ai: true, is_primary: true,
+                generation_version: nextVersion,
+                metadata: { provider: provider.name, model: provider.config?.openaiImageModel || "dall-e-3", prompt: studioPrompt },
+              },
+              {
+                product_id: productId, asset_type: "installed", asset_url: installedUrl,
+                generated_by_ai: true, is_primary: false,
+                generation_version: nextVersion,
+                metadata: { provider: provider.name, model: provider.config?.openaiImageModel || "dall-e-3", prompt: installedPrompt },
+              },
+            ]);
+
+            await supabase.from("products").update({
+              generated_studio_image: studioUrl,
+              generated_installed_image: installedUrl,
+            } as any).eq("id", productId);
+
+            result.mode = "imagen";
+            result.studio = studioUrl;
+            result.installed = installedUrl;
           }
-          lastCompiledPrompt = `Studio: ${studioPrompt}\n\nInstalled: ${installedPrompt}`;
-
-          const provider = getAIProvider();
-          const nextVersion = (product.generation_version ?? 0) + 1;
-          const uploadOne = async (label: "studio" | "installed", bytes: Buffer) => {
-            const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDINARY_CLOUD_NAME;
-            const apiKey = process.env.CLOUDINARY_API_KEY;
-            const apiSecret = process.env.CLOUDINARY_API_SECRET;
-
-            if (!cloudName || !apiKey || !apiSecret) {
-              throw new Error("Missing Cloudinary environment configuration on server");
-            }
-
-            const crypto = await import("crypto");
-            const timestamp = Math.round(Date.now() / 1000);
-            const folder = `products/${productId}`;
-
-            const paramString = `folder=${folder}&timestamp=${timestamp}`;
-            const signature = crypto
-              .createHash("sha1")
-              .update(paramString + apiSecret)
-              .digest("hex");
-
-            const formData = new URLSearchParams();
-            formData.append("file", `data:image/png;base64,${bytes.toString("base64")}`);
-            formData.append("api_key", apiKey);
-            formData.append("timestamp", String(timestamp));
-            formData.append("folder", folder);
-            formData.append("signature", signature);
-
-            const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
-              method: "POST",
-              body: formData,
-            });
-
-            if (!res.ok) {
-              const text = await res.text();
-              throw new Error(`Cloudinary server-side upload failed: ${text}`);
-            }
-
-            const data = await res.json();
-            return data.secure_url;
-          };
-
-          const [studioBuf, installedBuf] = await Promise.all([
-            provider.generateImage(studioPrompt),
-            provider.generateImage(installedPrompt),
-          ]);
-          const [studioUrl, installedUrl] = await Promise.all([
-            uploadOne("studio", studioBuf),
-            uploadOne("installed", installedBuf),
-          ]);
-
-          // Demote any previously primary generated assets.
-          await supabaseAdmin.from("product_assets")
-            .update({ is_primary: false })
-            .eq("product_id", productId)
-            .eq("generated_by_ai", true);
-
-          await supabaseAdmin.from("product_assets").insert([
-            {
-              product_id: productId, asset_type: "studio", asset_url: studioUrl,
-              generated_by_ai: true, is_primary: true,
-              generation_version: nextVersion,
-              metadata: { provider: provider.name, model: provider.name === "openai" ? "dall-e-3" : "imagen-3.0-generate-002", prompt: studioPrompt },
-            },
-            {
-              product_id: productId, asset_type: "installed", asset_url: installedUrl,
-              generated_by_ai: true, is_primary: false,
-              generation_version: nextVersion,
-              metadata: { provider: provider.name, model: provider.name === "openai" ? "dall-e-3" : "imagen-3.0-generate-002", prompt: installedPrompt },
-            },
-          ]);
-
-          await supabase.from("products").update({
-            generated_studio_image: studioUrl,
-            generated_installed_image: installedUrl,
-          } as any).eq("id", productId);
-
-          result.mode = "imagen";
-          result.studio = studioUrl;
-          result.installed = installedUrl;
         } else if (jt === "search_index") {
           await supabase.rpc("rebuild_search_index" as any, { _product_id: productId } as any);
           result.rebuilt = true;
@@ -487,13 +506,26 @@ export const runProductPipeline = createServerFn({ method: "POST" })
           result,
           error_log: null,
         });
+
+        // Update last provider status in app_settings to success
+        if (settings?.id) {
+          try {
+            await supabase.from("app_settings").update({
+              last_provider_call_success: true,
+              last_provider_error: null
+            } as any).eq("id", settings.id);
+          } catch (dbErr) {
+            console.error("Failed to update app_settings status", dbErr);
+          }
+        }
+
         done[jt] = true;
       } catch (e: any) {
         const errorLog: any = {
           message: String(e?.message ?? e),
           stack: String(e?.stack ?? ""),
-          provider: e?.provider || process.env.ACTIVE_AI_PROVIDER || "gemini",
-          model: e?.model || ((process.env.ACTIVE_AI_PROVIDER === "openai") ? "gpt-4o-mini" : "gemini-1.5-flash"),
+          provider: provider.name,
+          model: e?.model || (provider.name === "openai" ? (config?.openaiLlmModel || "gpt-4o-mini") : (config?.geminiLlmModel || "gemini-1.5-flash")),
           prompt: lastCompiledPrompt,
           cloudinary_url: product.image_url,
         };
@@ -513,6 +545,19 @@ export const runProductPipeline = createServerFn({ method: "POST" })
           error_log: errorLog,
           retry_count: (job.retry_count ?? 0) + 1,
         });
+
+        // Track last provider status in app_settings database
+        if (settings?.id) {
+          try {
+            await supabase.from("app_settings").update({
+              last_provider_call_success: false,
+              last_provider_error: `${provider.name} error: ${e?.message || String(e)}`
+            } as any).eq("id", settings.id);
+          } catch (dbErr) {
+            console.error("Failed to update app_settings status", dbErr);
+          }
+        }
+
         throw e;
       }
     };
@@ -570,12 +615,38 @@ export const runProductPipeline = createServerFn({ method: "POST" })
 export const testLLMConnection = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { prompt: string; systemPrompt: string }) => data)
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    let settingsRow: any = null;
     try {
-      const provider = getAIProvider();
+      const { data: settings } = await supabase.from("app_settings").select("*").limit(1).maybeSingle();
+      settingsRow = settings;
+      const config = settings ? {
+        activeProvider: settings.active_ai_provider || "openai",
+        openaiLlmModel: settings.openai_llm_model || "gpt-4o-mini",
+        openaiImageModel: settings.openai_image_model || "dall-e-3",
+        openaiImageSize: settings.openai_image_size || "1024x1024",
+        geminiLlmModel: settings.gemini_llm_model || "gemini-1.5-flash",
+        geminiImageModel: settings.gemini_image_model || "imagen-3.0-generate-002"
+      } : undefined;
+      const provider = getAIProvider(config);
       const result = await provider.callLLM(data.prompt, data.systemPrompt);
+
+      if (settingsRow?.id) {
+        await supabase.from("app_settings").update({
+          last_provider_call_success: true,
+          last_provider_error: null
+        } as any).eq("id", settingsRow.id);
+      }
+
       return { ok: true, text: result };
     } catch (e: any) {
+      if (settingsRow?.id) {
+        await supabase.from("app_settings").update({
+          last_provider_call_success: false,
+          last_provider_error: `LLM test failed: ${e.message || String(e)}`
+        } as any).eq("id", settingsRow.id);
+      }
       return {
         ok: false,
         error: e.message || String(e),
@@ -593,13 +664,39 @@ export const testLLMConnection = createServerFn({ method: "POST" })
 export const testImageConnection = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { prompt: string }) => data)
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    let settingsRow: any = null;
     try {
-      const provider = getAIProvider();
+      const { data: settings } = await supabase.from("app_settings").select("*").limit(1).maybeSingle();
+      settingsRow = settings;
+      const config = settings ? {
+        activeProvider: settings.active_ai_provider || "openai",
+        openaiLlmModel: settings.openai_llm_model || "gpt-4o-mini",
+        openaiImageModel: settings.openai_image_model || "dall-e-3",
+        openaiImageSize: settings.openai_image_size || "1024x1024",
+        geminiLlmModel: settings.gemini_llm_model || "gemini-1.5-flash",
+        geminiImageModel: settings.gemini_image_model || "imagen-3.0-generate-002"
+      } : undefined;
+      const provider = getAIProvider(config);
       const buf = await provider.generateImage(data.prompt);
       const b64 = buf.toString("base64");
+
+      if (settingsRow?.id) {
+        await supabase.from("app_settings").update({
+          last_provider_call_success: true,
+          last_provider_error: null
+        } as any).eq("id", settingsRow.id);
+      }
+
       return { ok: true, b64 };
     } catch (e: any) {
+      if (settingsRow?.id) {
+        await supabase.from("app_settings").update({
+          last_provider_call_success: false,
+          last_provider_error: `Image test failed: ${e.message || String(e)}`
+        } as any).eq("id", settingsRow.id);
+      }
       return {
         ok: false,
         error: e.message || String(e),
@@ -616,9 +713,11 @@ export const testImageConnection = createServerFn({ method: "POST" })
 
 export const getAIConfigDetails = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async () => {
-    const activeProvider = (process.env.ACTIVE_AI_PROVIDER || "openai").toLowerCase();
-    
+  .handler(async ({ context }) => {
+    const { supabase } = context;
+    const { data: settings } = await supabase.from("app_settings").select("*").limit(1).maybeSingle();
+
+    const activeProvider = settings?.active_ai_provider || "openai";
     const geminiKey = process.env.GEMINI_API_KEY || process.env.LOVABLE_API_KEY || "";
     const openAiKey = process.env.OPENAI_API_KEY || "";
     const anthropicKey = process.env.ANTHROPIC_API_KEY || "";
@@ -630,23 +729,46 @@ export const getAIConfigDetails = createServerFn({ method: "GET" })
 
     return {
       activeProvider,
+      lastProviderCallSuccess: settings?.last_provider_call_success ?? null,
+      lastProviderError: settings?.last_provider_error ?? null,
       openai: {
         apiKeyStatus: maskKey(openAiKey),
-        llmModel: process.env.OPENAI_LLM_MODEL || "gpt-4o-mini",
-        imageModel: process.env.OPENAI_IMAGE_MODEL || "dall-e-3",
-        imageSize: process.env.OPENAI_IMAGE_SIZE || "1024x1024",
+        llmModel: settings?.openai_llm_model || "gpt-4o-mini",
+        imageModel: settings?.openai_image_model || "dall-e-3",
+        imageSize: settings?.openai_image_size || "1024x1024",
       },
       gemini: {
         apiKeyStatus: maskKey(geminiKey),
-        llmModel: process.env.GEMINI_LLM_MODEL || "gemini-1.5-flash",
-        imageModel: process.env.GEMINI_IMAGE_MODEL || "imagen-3.0-generate-002",
+        llmModel: settings?.gemini_llm_model || "gemini-1.5-flash",
+        imageModel: settings?.gemini_image_model || "imagen-3.0-generate-002",
         isVertex: geminiKey.startsWith("AQ"),
         projectId: process.env.GCP_PROJECT_ID || "de-enreach-gemini-api-key",
         region: process.env.GCP_REGION || "us-central1",
       },
       claude: {
         apiKeyStatus: maskKey(anthropicKey),
-        llmModel: process.env.ANTHROPIC_LLM_MODEL || "claude-3-opus",
+        llmModel: settings?.anthropic_llm_model || "claude-3-opus",
       }
     };
+  });
+
+export const updateAISettings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: any) => data)
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const { data: current } = await supabase.from("app_settings").select("id").limit(1).maybeSingle();
+    if (!current?.id) {
+      throw new Error("No settings record found to update");
+    }
+    const { error } = await supabase.from("app_settings").update({
+      active_ai_provider: data.activeProvider,
+      openai_llm_model: data.openaiLlmModel,
+      openai_image_model: data.openaiImageModel,
+      openai_image_size: data.openaiImageSize,
+      gemini_llm_model: data.geminiLlmModel,
+      gemini_image_model: data.geminiImageModel
+    } as any).eq("id", current.id);
+    if (error) throw error;
+    return { ok: true };
   });

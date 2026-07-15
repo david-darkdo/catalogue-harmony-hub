@@ -100,7 +100,6 @@ function WizardPage() {
     const primary = uploadedPaths[0] ?? null;
     // Manual & Hybrid never fail on missing images; AI mode also survives — we
     // simply mark pending and let the pipeline (or manual publish) finish it.
-    const initialState = imageMode === "manual" ? "completed" : "pending";
     const payload = {
       type_id,
       category_id,
@@ -115,14 +114,14 @@ function WizardPage() {
       price: Number(form.price) || 0,
       image_url: primary,
       image_mode: imageMode,
-      status: form.status as any,
-      processing_state: initialState as any,
+      status: "draft",
+      processing_state: "pending",
       featured_homepage: form.featured_homepage,
       featured_feed: form.featured_feed,
       hidden: form.hidden,
       short_description: form.short_description.trim() || null,
       slug,
-      is_published: form.status === "published",
+      is_published: false,
     };
     const { data, error } = await supabase.from("products").insert(payload as any).select("id").single();
     if (error) { setSaving(false); return toast.error(error.message); }
@@ -137,18 +136,19 @@ function WizardPage() {
       }));
       await supabase.from("product_assets").insert(rows as any);
     }
-    if (data?.id && imageMode !== "manual") {
+    if (data?.id) {
       try {
         await enqueueAiPipeline(data.id);
         // Fire-and-forget execution so the wizard closes quickly.
         runProductPipeline({ data: { productId: data.id } }).catch((e: any) => {
           console.error("Pipeline execution failed", e);
-          toast.error("AI pipeline failed: " + (e?.message ?? "unknown"));
         });
-      } catch (e: any) { toast.error("Pipeline queue failed: " + e.message); }
+      } catch (e: any) {
+        console.error("Pipeline queue failed", e);
+      }
     }
     setSaving(false);
-    toast.success(imageMode === "manual" ? "Product created" : "Product created & AI pipeline queued");
+    toast.success("Product created & AI pipeline started");
     if (data?.id) navigate({ to: "/admin/products/$id", params: { id: data.id } });
   };
 

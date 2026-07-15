@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { getAIConfigDetails, testLLMConnection, testImageConnection } from "@/lib/ai-pipeline.functions";
+import { getAIConfigDetails, testLLMConnection, testImageConnection, updateAISettings } from "@/lib/ai-pipeline.functions";
 import { toast } from "sonner";
-import { Activity, Sparkles, AlertCircle, CheckCircle, RefreshCw, Server, Shield, Send, Image as ImageIcon } from "lucide-react";
+import { Activity, Sparkles, AlertCircle, CheckCircle, RefreshCw, Server, Shield, Send, Image as ImageIcon, Check, Save } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/diagnostics")({
   head: () => ({ meta: [{ title: "AI Diagnostics — Admin" }] }),
@@ -12,11 +12,25 @@ export const Route = createFileRoute("/_authenticated/admin/diagnostics")({
 
 function DiagnosticsPage() {
   const getConfig = useServerFn(getAIConfigDetails);
+  const saveConfig = useServerFn(updateAISettings);
   const runTextTest = useServerFn(testLLMConnection);
   const runImageTest = useServerFn(testImageConnection);
 
   const [config, setConfig] = useState<any>(null);
   const [loadingConfig, setLoadingConfig] = useState(true);
+  const [savingSettings, setSavingSettings] = useState(false);
+
+  // Selector form states
+  const [activeProvider, setActiveProvider] = useState("openai");
+  
+  // OpenAI details
+  const [openaiLlmModel, setOpenaiLlmModel] = useState("gpt-4o-mini");
+  const [openaiImageModel, setOpenaiImageModel] = useState("dall-e-3");
+  const [openaiImageSize, setOpenaiImageSize] = useState("1024x1024");
+  
+  // Gemini details
+  const [geminiLlmModel, setGeminiLlmModel] = useState("gemini-1.5-flash");
+  const [geminiImageModel, setGeminiImageModel] = useState("imagen-3.0-generate-002");
 
   // Text test states
   const [systemPrompt, setSystemPrompt] = useState("You are a luxury interiors brand assistant. Output British English.");
@@ -36,6 +50,14 @@ function DiagnosticsPage() {
     try {
       const res = await getConfig();
       setConfig(res);
+      
+      // Seed state
+      setActiveProvider(res.activeProvider);
+      setOpenaiLlmModel(res.openai.llmModel);
+      setOpenaiImageModel(res.openai.imageModel);
+      setOpenaiImageSize(res.openai.imageSize);
+      setGeminiLlmModel(res.gemini.llmModel);
+      setGeminiImageModel(res.gemini.imageModel);
     } catch (e: any) {
       toast.error(e.message || "Failed to load AI configuration");
     } finally {
@@ -47,6 +69,31 @@ function DiagnosticsPage() {
     loadConfig();
   }, []);
 
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingSettings(true);
+    try {
+      await saveConfig({
+        data: {
+          activeProvider,
+          openaiLlmModel,
+          openaiImageModel,
+          openaiImageSize,
+          geminiLlmModel,
+          geminiImageModel
+        }
+      });
+      toast.success("AI Configuration settings saved successfully!");
+      // Reload fresh configuration state
+      const fresh = await getConfig();
+      setConfig(fresh);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to save settings");
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
   const handleTextTest = async () => {
     setTextLoading(true);
     setTextResult(null);
@@ -56,9 +103,14 @@ function DiagnosticsPage() {
       if (res.ok) {
         setTextResult(res.text!);
         toast.success("Text generation successful!");
+        // Refresh connection details to show success call status
+        const fresh = await getConfig();
+        setConfig(fresh);
       } else {
         setTextError(res);
         toast.error("Text generation connection failed");
+        const fresh = await getConfig();
+        setConfig(fresh);
       }
     } catch (e: any) {
       setTextError({ ok: false, error: e.message || String(e) });
@@ -77,9 +129,13 @@ function DiagnosticsPage() {
       if (res.ok) {
         setImageResult(`data:image/png;base64,${res.b64}`);
         toast.success("Image generation successful!");
+        const fresh = await getConfig();
+        setConfig(fresh);
       } else {
         setImageError(res);
         toast.error("Image generation connection failed");
+        const fresh = await getConfig();
+        setConfig(fresh);
       }
     } catch (e: any) {
       setImageError({ ok: false, error: e.message || String(e) });
@@ -98,79 +154,196 @@ function DiagnosticsPage() {
     );
   }
 
-  const activeColor = "border-primary bg-primary/5 text-primary";
-  const inactiveColor = "border-border bg-card text-muted-foreground";
+  // Calculate Provider Connection Status
+  const getProviderStatus = () => {
+    const isSuccess = config?.lastProviderCallSuccess;
+    const hasError = !!config?.lastProviderError;
+    
+    // Check if key exists for active selection
+    const activeKeyStatus = activeProvider === "openai" ? config?.openai?.apiKeyStatus : config?.gemini?.apiKeyStatus;
+    if (!activeKeyStatus || activeKeyStatus === "MISSING") {
+      return { label: "Configuration Error", color: "text-amber-500 border-amber-500/20 bg-amber-500/5", desc: "API key is missing in environment variables." };
+    }
+    
+    if (isSuccess === true) {
+      return { label: "Connected", color: "text-emerald-500 border-emerald-500/20 bg-emerald-500/5", desc: "Last executed provider call succeeded." };
+    }
+    if (hasError) {
+      return { label: "Configuration Error", color: "text-red-500 border-red-500/20 bg-red-500/5", desc: config.lastProviderError };
+    }
+    return { label: "Connected", color: "text-emerald-500 border-emerald-500/20 bg-emerald-500/5", desc: "Ready to test connection." };
+  };
+
+  const statusInfo = getProviderStatus();
 
   return (
     <div className="container-app py-6 space-y-6">
       <div>
-        <h1 className="font-display text-2xl font-semibold">AI Provider Diagnostics</h1>
+        <h1 className="font-display text-2xl font-semibold">AI Operating System Diagnostics</h1>
         <p className="text-sm text-muted-foreground">
-          Forensic connection checks, key restriction validations, and non-blocking model tests.
+          Forensic connection checks, dynamic routing selections, and model overrides.
         </p>
       </div>
 
-      {/* 1. Global AI Configurations Info */}
-      <div className="grid gap-6 md:grid-cols-3">
-        {/* Active Provider Card */}
-        <div className="rounded-xl border p-5 bg-card space-y-3">
-          <div className="flex items-center gap-2 font-semibold">
-            <Server className="h-4 w-4 text-primary" />
-            <span>Active Router Provider</span>
+      {/* 1. AI PROVIDER SELECTION SECTION */}
+      <form onSubmit={handleSaveSettings} className="rounded-xl border border-border bg-card p-5 space-y-6">
+        <div className="flex items-center justify-between border-b border-border pb-3 flex-wrap gap-2">
+          <div className="flex items-center gap-2">
+            <Server className="h-4.5 w-4.5 text-primary" />
+            <h2 className="font-display font-semibold">AI Provider Selection</h2>
           </div>
-          <div>
-            <span className="text-2xl font-bold uppercase tracking-wider text-primary">
-              {config?.activeProvider}
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Current active provider selected dynamically via the environment variable <code>ACTIVE_AI_PROVIDER</code>.
-          </p>
-        </div>
-
-        {/* OpenAI Card */}
-        <div className={`rounded-xl border p-5 transition ${config?.activeProvider === "openai" ? "border-primary bg-primary/5" : "border-border bg-card"}`}>
-          <div className="flex items-center justify-between font-semibold mb-2">
-            <div className="flex items-center gap-2">
-              <Shield className="h-4 w-4 text-emerald-500" />
-              <span>OpenAI Adapter</span>
+          
+          <div className="flex items-center gap-3">
+            {/* Status indicator */}
+            <div className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold ${statusInfo.color}`}>
+              <span className="relative flex h-2 w-2">
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${statusInfo.label === "Connected" ? "bg-emerald-400" : "bg-amber-400"}`}></span>
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${statusInfo.label === "Connected" ? "bg-emerald-500" : "bg-amber-500"}`}></span>
+              </span>
+              <span>{statusInfo.label}</span>
             </div>
-            {config?.activeProvider === "openai" && (
-              <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] uppercase font-bold text-primary">Active</span>
-            )}
-          </div>
-          <div className="space-y-1.5 text-xs">
-            <div><strong>API Key Status:</strong> <code className="text-muted-foreground">{config?.openai?.apiKeyStatus}</code></div>
-            <div><strong>LLM Model:</strong> <code className="text-muted-foreground">{config?.openai?.llmModel}</code></div>
-            <div><strong>Image Model:</strong> <code className="text-muted-foreground">{config?.openai?.imageModel}</code> ({config?.openai?.imageSize})</div>
+            
+            <button
+              type="submit"
+              disabled={savingSettings}
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              {savingSettings ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              Save Configuration
+            </button>
           </div>
         </div>
 
-        {/* Gemini Card */}
-        <div className={`rounded-xl border p-5 transition ${config?.activeProvider === "gemini" ? "border-primary bg-primary/5" : "border-border bg-card"}`}>
-          <div className="flex items-center justify-between font-semibold mb-2">
-            <div className="flex items-center gap-2">
-              <Shield className="h-4 w-4 text-blue-500" />
-              <span>Google Gemini Adapter</span>
-            </div>
-            {config?.activeProvider === "gemini" && (
-              <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] uppercase font-bold text-primary">Active</span>
-            )}
+        {/* Dynamic selector inputs */}
+        <div className="grid gap-6 md:grid-cols-3">
+          {/* Active provider picker */}
+          <div className="space-y-2">
+            <label className="block text-xs font-semibold text-muted-foreground">Active AI Provider Router</label>
+            <select
+              value={activeProvider}
+              onChange={(e) => setActiveProvider(e.target.value)}
+              className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs outline-none focus:border-primary font-medium"
+            >
+              <option value="openai">OpenAI (Primary Production)</option>
+              <option value="gemini">Google Gemini (Optional Secondary)</option>
+              <option value="claude">Anthropic Claude (Future)</option>
+            </select>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Changing this updates prompt routing for all pipeline stages: Understanding, Description, SEO, FAQ, and Images.
+            </p>
           </div>
-          <div className="space-y-1.5 text-xs">
-            <div><strong>API Key Status:</strong> <code className="text-muted-foreground">{config?.gemini?.apiKeyStatus}</code></div>
-            <div><strong>Endpoint Type:</strong> <span className="font-bold text-muted-foreground">{config?.gemini?.isVertex ? `Vertex AI (Starts with AQ)` : `AI Studio (Developer Key)`}</span></div>
-            {config?.gemini?.isVertex && (
-              <>
-                <div><strong>GCP Project ID:</strong> <code className="text-muted-foreground">{config?.gemini?.projectId}</code></div>
-                <div><strong>GCP Region:</strong> <code className="text-muted-foreground">{config?.gemini?.region}</code></div>
-              </>
-            )}
-            <div><strong>LLM Model:</strong> <code className="text-muted-foreground">{config?.gemini?.llmModel}</code></div>
-            <div><strong>Image Model:</strong> <code className="text-muted-foreground">{config?.gemini?.imageModel}</code></div>
+
+          {/* OpenAI configuration overrides */}
+          <div className={`rounded-lg border p-4 space-y-3 transition ${activeProvider === "openai" ? "border-primary bg-primary/5" : "border-border bg-card/40 opacity-70"}`}>
+            <div className="flex items-center gap-1 text-xs font-bold text-emerald-600">
+              <Shield className="h-3.5 w-3.5" /> OpenAI Parameters
+            </div>
+            
+            <div className="space-y-2 text-xs">
+              <div>
+                <label className="block text-[10px] font-semibold text-muted-foreground mb-1">Text Generation Model</label>
+                <input
+                  type="text"
+                  value={openaiLlmModel}
+                  onChange={(e) => setOpenaiLlmModel(e.target.value)}
+                  className="w-full rounded border border-border bg-background px-2 py-1 text-[11px] outline-none focus:border-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold text-muted-foreground mb-1">Image Generation Model</label>
+                <input
+                  type="text"
+                  value={openaiImageModel}
+                  onChange={(e) => setOpenaiImageModel(e.target.value)}
+                  className="w-full rounded border border-border bg-background px-2 py-1 text-[11px] outline-none focus:border-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold text-muted-foreground mb-1">Image Resolution size</label>
+                <select
+                  value={openaiImageSize}
+                  onChange={(e) => setOpenaiImageSize(e.target.value)}
+                  className="w-full rounded border border-border bg-background px-2 py-1 text-[11px] outline-none focus:border-primary"
+                >
+                  <option value="1024x1024">1024x1024 (dall-e-3 standard)</option>
+                  <option value="512x512">512x512 (dall-e-2 standard)</option>
+                  <option value="256x256">256x256 (dall-e-2 small)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Gemini configuration overrides */}
+          <div className={`rounded-lg border p-4 space-y-3 transition ${activeProvider === "gemini" ? "border-primary bg-primary/5" : "border-border bg-card/40 opacity-70"}`}>
+            <div className="flex items-center gap-1 text-xs font-bold text-blue-600">
+              <Shield className="h-3.5 w-3.5" /> Google Gemini Parameters
+            </div>
+            
+            <div className="space-y-2 text-xs">
+              <div>
+                <label className="block text-[10px] font-semibold text-muted-foreground mb-1">Text Generation Model</label>
+                <input
+                  type="text"
+                  value={geminiLlmModel}
+                  onChange={(e) => setGeminiLlmModel(e.target.value)}
+                  className="w-full rounded border border-border bg-background px-2 py-1 text-[11px] outline-none focus:border-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] font-semibold text-muted-foreground mb-1">Image Generation Model</label>
+                <input
+                  type="text"
+                  value={geminiImageModel}
+                  onChange={(e) => setGeminiImageModel(e.target.value)}
+                  className="w-full rounded border border-border bg-background px-2 py-1 text-[11px] outline-none focus:border-primary"
+                />
+              </div>
+              <div className="text-[10px] text-muted-foreground leading-snug">
+                Supports developer key endpoint (AI Studio) or enterprise service account endpoint (Vertex AI).
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+
+        {/* Diagnostic log reporting panel */}
+        <div className="rounded-lg border border-border bg-card p-4 space-y-1.5 text-xs">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div>
+              <strong>Active API Key Present:</strong>{" "}
+              <code className="text-muted-foreground font-mono">
+                {activeProvider === "openai" ? config?.openai?.apiKeyStatus : config?.gemini?.apiKeyStatus}
+              </code>
+            </div>
+            <div>
+              <strong>Text Model Selected:</strong>{" "}
+              <code className="text-muted-foreground font-mono">
+                {activeProvider === "openai" ? openaiLlmModel : geminiLlmModel}
+              </code>
+            </div>
+            <div>
+              <strong>Image Model Selected:</strong>{" "}
+              <code className="text-muted-foreground font-mono">
+                {activeProvider === "openai" ? openaiImageModel : geminiImageModel}
+              </code>
+            </div>
+            <div>
+              <strong>GCP project ID / region:</strong>{" "}
+              <code className="text-muted-foreground font-mono">
+                {config?.gemini?.isVertex ? `${config?.gemini?.projectId} (${config?.gemini?.region})` : "N/A (AI Studio mode)"}
+              </code>
+            </div>
+          </div>
+
+          <div className="border-t border-border mt-3 pt-3 text-[11px] text-muted-foreground break-words space-y-1">
+            <div><strong>Active Status Message:</strong> {statusInfo.desc}</div>
+            {config?.lastProviderError && (
+              <div className="rounded border border-red-500/10 bg-red-500/5 p-2 font-mono text-[10px] text-red-600 mt-2 whitespace-pre-wrap max-h-32 overflow-auto">
+                {config.lastProviderError}
+              </div>
+            )}
+          </div>
+        </div>
+      </form>
 
       {/* 2. Diagnostics Execution Area */}
       <div className="grid gap-6 md:grid-cols-2">
