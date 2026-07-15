@@ -320,7 +320,6 @@ export class OpenAIProvider implements AIProvider {
       prompt,
       n: 1,
       size: "1024x1024",
-      response_format: "b64_json"
     };
 
     let res: Response;
@@ -372,19 +371,42 @@ export class OpenAIProvider implements AIProvider {
     }
 
     const b64 = json?.data?.[0]?.b64_json;
-    if (!b64) {
-      throw new AIProviderError("No base64 image data returned from OpenAI DALL-E payload", {
-        provider: this.name,
-        model,
-        url,
-        requestHeaders: { ...requestHeaders, Authorization: "Bearer HIDDEN_KEY" },
-        requestBody,
-        responseBody,
-        status: res.status,
-      });
+    const imgUrl = json?.data?.[0]?.url;
+
+    if (b64) {
+      return Buffer.from(b64, "base64");
     }
 
-    return Buffer.from(b64, "base64");
+    if (imgUrl) {
+      try {
+        const downloadRes = await fetch(imgUrl);
+        if (!downloadRes.ok) {
+          throw new Error(`Failed to download image from URL: ${downloadRes.statusText}`);
+        }
+        const ab = await downloadRes.arrayBuffer();
+        return Buffer.from(ab);
+      } catch (err: any) {
+        throw new AIProviderError(`Failed to download generated image URL: ${err.message}`, {
+          provider: this.name,
+          model,
+          url,
+          requestHeaders: { ...requestHeaders, Authorization: "Bearer HIDDEN_KEY" },
+          requestBody,
+          responseBody,
+          status: res.status,
+        });
+      }
+    }
+
+    throw new AIProviderError("No image data (b64_json or url) returned from OpenAI DALL-E payload", {
+      provider: this.name,
+      model,
+      url,
+      requestHeaders: { ...requestHeaders, Authorization: "Bearer HIDDEN_KEY" },
+      requestBody,
+      responseBody,
+      status: res.status,
+    });
   }
 }
 

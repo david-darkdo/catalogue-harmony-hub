@@ -210,6 +210,44 @@ export const runProductPipeline = createServerFn({ method: "POST" })
       .from("products").select("*").eq("id", productId).maybeSingle();
     if (pErr || !product) throw new Error(pErr?.message ?? "Product not found");
 
+    // Validate active provider environment config
+    const activeProvider = (process.env.ACTIVE_AI_PROVIDER || "openai").toLowerCase();
+    if (activeProvider === "openai") {
+      if (!process.env.OPENAI_API_KEY) {
+        const errMsg = "Configuration Error: OpenAI is the active provider, but OPENAI_API_KEY environment variable is missing.";
+        await supabase.from("products").update({
+          processing_state: "error",
+          error_log: { message: errMsg }
+        } as any).eq("id", productId);
+        return { ok: false, error: errMsg };
+      }
+    } else if (activeProvider === "gemini") {
+      if (!(process.env.GEMINI_API_KEY || process.env.LOVABLE_API_KEY)) {
+        const errMsg = "Configuration Error: Gemini is the active provider, but GEMINI_API_KEY environment variable is missing.";
+        await supabase.from("products").update({
+          processing_state: "error",
+          error_log: { message: errMsg }
+        } as any).eq("id", productId);
+        return { ok: false, error: errMsg };
+      }
+    } else if (activeProvider === "claude") {
+      if (!process.env.ANTHROPIC_API_KEY) {
+        const errMsg = "Configuration Error: Claude is the active provider, but ANTHROPIC_API_KEY environment variable is missing.";
+        await supabase.from("products").update({
+          processing_state: "error",
+          error_log: { message: errMsg }
+        } as any).eq("id", productId);
+        return { ok: false, error: errMsg };
+      }
+    } else {
+      const errMsg = `Configuration Error: Unsupported active AI provider '${activeProvider}'.`;
+      await supabase.from("products").update({
+        processing_state: "error",
+        error_log: { message: errMsg }
+      } as any).eq("id", productId);
+      return { ok: false, error: errMsg };
+    }
+
     await supabase.from("products")
       .update({ processing_state: "processing", error_log: null, last_processed_at: new Date().toISOString() } as any)
       .eq("id", productId);
