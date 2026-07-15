@@ -248,6 +248,7 @@ export const runProductPipeline = createServerFn({ method: "POST" })
       }
       const started = Date.now();
       await setJob(job.id, { status: "processing", started_at: new Date().toISOString(), attempts: (job.attempts ?? 0) + 1 });
+      let lastCompiledPrompt = "";
       try {
         const jt = job.job_type as JobType;
         const result: Record<string, unknown> = {};
@@ -258,6 +259,7 @@ export const runProductPipeline = createServerFn({ method: "POST" })
           if (familyOverride) {
             prompt += `\n\nAdditional Directives: ${familyOverride}`;
           }
+          lastCompiledPrompt = prompt;
           const parsed = await tryJSON<any>(
             prompt,
             "You are a product intelligence engine. Output strict JSON."
@@ -290,6 +292,7 @@ export const runProductPipeline = createServerFn({ method: "POST" })
           if (familyOverride) {
             prompt += `\n\nAdditional Directives: ${familyOverride}`;
           }
+          lastCompiledPrompt = prompt;
           const text = await callLLM(
             prompt,
             "You are a luxury interiors copywriter. British English."
@@ -302,6 +305,7 @@ export const runProductPipeline = createServerFn({ method: "POST" })
           if (familyOverride) {
             prompt += `\n\nAdditional Directives: ${familyOverride}`;
           }
+          lastCompiledPrompt = prompt;
           const seo = await tryJSON<any>(
             prompt,
             "You are an SEO engineer. Output strict JSON."
@@ -318,6 +322,7 @@ export const runProductPipeline = createServerFn({ method: "POST" })
           if (familyOverride) {
             prompt += `\n\nAdditional Directives: ${familyOverride}`;
           }
+          lastCompiledPrompt = prompt;
           const faq = await tryJSON<any>(
             prompt,
             "You are a product expert. Output strict JSON."
@@ -350,6 +355,7 @@ export const runProductPipeline = createServerFn({ method: "POST" })
             studioPrompt += `\n\nAdditional Directives: ${familyOverride}`;
             installedPrompt += `\n\nAdditional Directives: ${familyOverride}`;
           }
+          lastCompiledPrompt = `Studio: ${studioPrompt}\n\nInstalled: ${installedPrompt}`;
 
           const provider = getAIProvider("gemini");
           const nextVersion = (product.generation_version ?? 0) + 1;
@@ -449,7 +455,14 @@ export const runProductPipeline = createServerFn({ method: "POST" })
           status: "failed",
           completed_at: new Date().toISOString(),
           execution_time_ms: Date.now() - started,
-          error_log: { message: String(e?.message ?? e) },
+          error_log: {
+            message: String(e?.message ?? e),
+            stack: String(e?.stack ?? ""),
+            provider: process.env.ACTIVE_AI_PROVIDER || "gemini",
+            model: (process.env.ACTIVE_AI_PROVIDER === "openai") ? "gpt-4o-mini" : "gemini-1.5-flash",
+            prompt: lastCompiledPrompt,
+            cloudinary_url: product.image_url,
+          },
           retry_count: (job.retry_count ?? 0) + 1,
         });
         throw e;

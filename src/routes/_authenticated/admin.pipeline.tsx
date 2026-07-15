@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { RefreshCw, Play, AlertTriangle, CheckCircle2, Clock, Archive } from "lucide-react";
@@ -281,32 +281,74 @@ function PipelinePage() {
                         </thead>
                         <tbody className="divide-y divide-border">
                           {jobs.map((j) => (
-                            <tr key={j.id}>
-                              <td className="py-1.5 pr-2 font-mono">{j.job_type}</td>
-                              <td className="py-1.5 pr-2 text-muted-foreground">{j.job_dependency ?? "—"}</td>
-                              <td className="py-1.5 pr-2">
-                                <span className={`rounded px-1.5 py-0.5 text-[10px] uppercase ${
-                                  j.status === "success" ? "bg-primary/10 text-primary" :
-                                  j.status === "failed" ? "bg-destructive/10 text-destructive" :
-                                  j.status === "processing" ? "bg-blue-500/10 text-blue-500" :
-                                  "bg-muted text-muted-foreground"
-                                }`}>{j.status}</span>
-                              </td>
-                              <td className="py-1.5 pr-2">{j.attempts}</td>
-                              <td className="py-1.5 pr-2 text-muted-foreground">
-                                {new Date(j.updated_at).toLocaleTimeString()}
-                              </td>
-                              <td className="py-1.5 pr-2">
-                                {(j.status === "failed" || j.status === "pending") && (
-                                  <button
-                                    onClick={() => handleRetryJob(j.id, p.id)}
-                                    className="text-primary hover:underline"
-                                  >
-                                    Retry
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
+                            <React.Fragment key={j.id}>
+                              <tr>
+                                <td className="py-1.5 pr-2 font-mono">{j.job_type}</td>
+                                <td className="py-1.5 pr-2 text-muted-foreground">{j.job_dependency ?? "—"}</td>
+                                <td className="py-1.5 pr-2">
+                                  <span className={`rounded px-1.5 py-0.5 text-[10px] uppercase ${
+                                    j.status === "success" ? "bg-primary/10 text-primary" :
+                                    j.status === "failed" ? "bg-destructive/10 text-destructive" :
+                                    j.status === "processing" ? "bg-blue-500/10 text-blue-500" :
+                                    "bg-muted text-muted-foreground"
+                                  }`}>{j.status}</span>
+                                </td>
+                                <td className="py-1.5 pr-2">{j.attempts}</td>
+                                <td className="py-1.5 pr-2 text-muted-foreground">
+                                  {new Date(j.updated_at).toLocaleTimeString()}
+                                </td>
+                                <td className="py-1.5 pr-2">
+                                  {(j.status === "failed" || j.status === "pending") && (
+                                    <button
+                                      onClick={() => handleRetryJob(j.id, p.id)}
+                                      className="text-primary hover:underline"
+                                    >
+                                      Retry
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                              {j.status === "failed" && j.error_log && (
+                                <tr>
+                                  <td colSpan={6} className="py-2 pl-4 pr-2 bg-destructive/5 rounded-md border border-destructive/10">
+                                    <div className="space-y-1.5 text-[11px] text-destructive-foreground/80">
+                                      <div className="text-destructive font-semibold">
+                                        Error: {typeof j.error_log === "string" ? j.error_log : j.error_log.message || JSON.stringify(j.error_log)}
+                                      </div>
+                                      {j.error_log.provider && (
+                                        <div className="text-muted-foreground">
+                                          <strong>AI Provider:</strong> <span className="uppercase font-bold">{j.error_log.provider}</span> ({j.error_log.model})
+                                        </div>
+                                      )}
+                                      {j.error_log.cloudinary_url && (
+                                        <div className="text-muted-foreground">
+                                          <strong>Cloudinary Image:</strong>{" "}
+                                          <a href={j.error_log.cloudinary_url} target="_blank" rel="noopener noreferrer" className="underline text-primary hover:text-primary/80">
+                                            {j.error_log.cloudinary_url}
+                                          </a>
+                                        </div>
+                                      )}
+                                      {j.error_log.prompt && (
+                                        <details className="mt-1 cursor-pointer">
+                                          <summary className="font-semibold text-primary hover:underline">Show Final Compiled Prompt Sent</summary>
+                                          <pre className="mt-1 max-h-32 overflow-auto rounded bg-background border border-border p-2 text-[10px] text-muted-foreground whitespace-pre-wrap font-mono">
+                                            {j.error_log.prompt}
+                                          </pre>
+                                        </details>
+                                      )}
+                                      {j.error_log.stack && (
+                                        <details className="cursor-pointer mt-1">
+                                          <summary className="font-semibold text-muted-foreground hover:text-foreground hover:underline">Show Stack Trace</summary>
+                                          <pre className="mt-1 max-h-32 overflow-auto rounded bg-background border border-border p-2 text-[10px] text-muted-foreground whitespace-pre-wrap font-mono">
+                                            {j.error_log.stack}
+                                          </pre>
+                                        </details>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
                           ))}
                         </tbody>
                       </table>
