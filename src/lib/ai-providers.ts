@@ -43,7 +43,7 @@ export class GeminiProvider implements AIProvider {
     if (!key) throw new Error("GEMINI_API_KEY environment variable is not defined");
 
     const isVertex = key.startsWith("AQ");
-    const model = "gemini-1.5-flash";
+    const model = process.env.GEMINI_LLM_MODEL || "gemini-1.5-flash";
     
     let url = "";
     if (isVertex) {
@@ -136,7 +136,7 @@ export class GeminiProvider implements AIProvider {
     if (!key) throw new Error("GEMINI_API_KEY environment variable is not defined");
 
     const isVertex = key.startsWith("AQ");
-    const model = "imagen-3.0-generate-002";
+    const model = process.env.GEMINI_IMAGE_MODEL || "imagen-3.0-generate-002";
 
     let url = "";
     if (isVertex) {
@@ -240,7 +240,7 @@ export class OpenAIProvider implements AIProvider {
     const key = process.env.OPENAI_API_KEY;
     if (!key) throw new Error("OPENAI_API_KEY environment variable is not defined");
 
-    const model = "gpt-4o-mini";
+    const model = process.env.OPENAI_LLM_MODEL || "gpt-4o-mini";
     const url = "https://api.openai.com/v1/chat/completions";
     const requestHeaders = {
       "Content-Type": "application/json",
@@ -309,7 +309,8 @@ export class OpenAIProvider implements AIProvider {
     const key = process.env.OPENAI_API_KEY;
     if (!key) throw new Error("OPENAI_API_KEY environment variable is not defined");
 
-    const model = "dall-e-3";
+    const model = process.env.OPENAI_IMAGE_MODEL || "dall-e-3";
+    const size = process.env.OPENAI_IMAGE_SIZE || "1024x1024";
     const url = "https://api.openai.com/v1/images/generations";
     const requestHeaders = {
       "Content-Type": "application/json",
@@ -319,7 +320,7 @@ export class OpenAIProvider implements AIProvider {
       model,
       prompt,
       n: 1,
-      size: "1024x1024",
+      size,
     };
 
     let res: Response;

@@ -519,17 +519,26 @@ export const runProductPipeline = createServerFn({ method: "POST" })
 
     // Execute in a resolution order that respects dependencies.
     const order: JobType[] = ["understanding", "description", "seo", "faq_generation", "image_generation", "search_index"];
-    let anyFail = false;
+    let anyCriticalFail = false;
     for (const t of order) {
       const j = jobList.find((x) => x.job_type === t && x.status !== "success");
       if (!j) continue;
-      try { await runJob(j); } catch { anyFail = true; break; }
+      try {
+        await runJob(j);
+      } catch (err) {
+        if (t === "image_generation") {
+          console.warn("Non-blocking pipeline step 'image_generation' failed. Proceeding with remaining steps.");
+        } else {
+          anyCriticalFail = true;
+          break;
+        }
+      }
     }
 
-    if (anyFail) {
+    if (anyCriticalFail) {
       await supabase.from("products").update({
         processing_state: "error",
-        error_log: { message: "One or more AI jobs failed. See ai_jobs.error_log." },
+        error_log: { message: "One or more critical AI jobs failed. See ai_jobs.error_log." },
         last_processed_at: new Date().toISOString(),
       } as any).eq("id", productId);
       return { ok: false as const };
@@ -556,4 +565,88 @@ export const runProductPipeline = createServerFn({ method: "POST" })
     } as any).eq("id", productId);
 
     return { ok: true as const };
+  });
+
+export const testLLMConnection = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { prompt: string; systemPrompt: string }) => data)
+  .handler(async ({ data }) => {
+    try {
+      const provider = getAIProvider();
+      const result = await provider.callLLM(data.prompt, data.systemPrompt);
+      return { ok: true, text: result };
+    } catch (e: any) {
+      return {
+        ok: false,
+        error: e.message || String(e),
+        details: e instanceof AIProviderError || e?.name === "AIProviderError" ? {
+          url: e.url,
+          requestHeaders: e.requestHeaders,
+          requestBody: e.requestBody,
+          responseBody: e.responseBody,
+          status: e.status
+        } : null
+      };
+    }
+  });
+
+export const testImageConnection = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { prompt: string }) => data)
+  .handler(async ({ data }) => {
+    try {
+      const provider = getAIProvider();
+      const buf = await provider.generateImage(data.prompt);
+      const b64 = buf.toString("base64");
+      return { ok: true, b64 };
+    } catch (e: any) {
+      return {
+        ok: false,
+        error: e.message || String(e),
+        details: e instanceof AIProviderError || e?.name === "AIProviderError" ? {
+          url: e.url,
+          requestHeaders: e.requestHeaders,
+          requestBody: e.requestBody,
+          responseBody: e.responseBody,
+          status: e.status
+        } : null
+      };
+    }
+  });
+
+export const getAIConfigDetails = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const activeProvider = (process.env.ACTIVE_AI_PROVIDER || "openai").toLowerCase();
+    
+    const geminiKey = process.env.GEMINI_API_KEY || process.env.LOVABLE_API_KEY || "";
+    const openAiKey = process.env.OPENAI_API_KEY || "";
+    const anthropicKey = process.env.ANTHROPIC_API_KEY || "";
+
+    const maskKey = (key: string) => {
+      if (!key) return "MISSING";
+      return `${key.slice(0, 6)}...${key.slice(-4)} (Length: ${key.length})`;
+    };
+
+    return {
+      activeProvider,
+      openai: {
+        apiKeyStatus: maskKey(openAiKey),
+        llmModel: process.env.OPENAI_LLM_MODEL || "gpt-4o-mini",
+        imageModel: process.env.OPENAI_IMAGE_MODEL || "dall-e-3",
+        imageSize: process.env.OPENAI_IMAGE_SIZE || "1024x1024",
+      },
+      gemini: {
+        apiKeyStatus: maskKey(geminiKey),
+        llmModel: process.env.GEMINI_LLM_MODEL || "gemini-1.5-flash",
+        imageModel: process.env.GEMINI_IMAGE_MODEL || "imagen-3.0-generate-002",
+        isVertex: geminiKey.startsWith("AQ"),
+        projectId: process.env.GCP_PROJECT_ID || "de-enreach-gemini-api-key",
+        region: process.env.GCP_REGION || "us-central1",
+      },
+      claude: {
+        apiKeyStatus: maskKey(anthropicKey),
+        llmModel: process.env.ANTHROPIC_LLM_MODEL || "claude-3-opus",
+      }
+    };
   });
