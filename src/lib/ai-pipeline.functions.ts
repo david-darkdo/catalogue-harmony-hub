@@ -627,7 +627,8 @@ export const testLLMConnection = createServerFn({ method: "POST" })
         openaiImageModel: settings.openai_image_model || "dall-e-3",
         openaiImageSize: settings.openai_image_size || "1024x1024",
         geminiLlmModel: settings.gemini_llm_model || "gemini-1.5-flash",
-        geminiImageModel: settings.gemini_image_model || "imagen-3.0-generate-002"
+        geminiImageModel: settings.gemini_image_model || "imagen-3.0-generate-002",
+        geminiUseVertex: settings.gemini_use_vertex ?? false
       } : undefined;
       const provider = getAIProvider(config);
       const result = await provider.callLLM(data.prompt, data.systemPrompt);
@@ -676,7 +677,8 @@ export const testImageConnection = createServerFn({ method: "POST" })
         openaiImageModel: settings.openai_image_model || "dall-e-3",
         openaiImageSize: settings.openai_image_size || "1024x1024",
         geminiLlmModel: settings.gemini_llm_model || "gemini-1.5-flash",
-        geminiImageModel: settings.gemini_image_model || "imagen-3.0-generate-002"
+        geminiImageModel: settings.gemini_image_model || "imagen-3.0-generate-002",
+        geminiUseVertex: settings.gemini_use_vertex ?? false
       } : undefined;
       const provider = getAIProvider(config);
       const buf = await provider.generateImage(data.prompt);
@@ -741,7 +743,8 @@ export const getAIConfigDetails = createServerFn({ method: "GET" })
         apiKeyStatus: maskKey(geminiKey),
         llmModel: settings?.gemini_llm_model || "gemini-1.5-flash",
         imageModel: settings?.gemini_image_model || "imagen-3.0-generate-002",
-        isVertex: geminiKey.startsWith("AQ"),
+        geminiUseVertex: settings?.gemini_use_vertex ?? false,
+        isVertex: settings?.gemini_use_vertex ?? geminiKey.startsWith("AQ"),
         projectId: process.env.GCP_PROJECT_ID || "de-enreach-gemini-api-key",
         region: process.env.GCP_REGION || "us-central1",
       },
@@ -767,7 +770,8 @@ export const updateAISettings = createServerFn({ method: "POST" })
       openai_image_model: data.openaiImageModel,
       openai_image_size: data.openaiImageSize,
       gemini_llm_model: data.geminiLlmModel,
-      gemini_image_model: data.geminiImageModel
+      gemini_image_model: data.geminiImageModel,
+      gemini_use_vertex: data.geminiUseVertex
     } as any).eq("id", current.id);
     if (error) throw error;
     return { ok: true };

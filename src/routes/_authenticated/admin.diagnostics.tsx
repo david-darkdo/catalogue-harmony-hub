@@ -31,6 +31,7 @@ function DiagnosticsPage() {
   // Gemini details
   const [geminiLlmModel, setGeminiLlmModel] = useState("gemini-1.5-flash");
   const [geminiImageModel, setGeminiImageModel] = useState("imagen-3.0-generate-002");
+  const [geminiUseVertex, setGeminiUseVertex] = useState(false);
 
   // Text test states
   const [systemPrompt, setSystemPrompt] = useState("You are a luxury interiors brand assistant. Output British English.");
@@ -58,6 +59,7 @@ function DiagnosticsPage() {
       setOpenaiImageSize(res.openai.imageSize);
       setGeminiLlmModel(res.gemini.llmModel);
       setGeminiImageModel(res.gemini.imageModel);
+      setGeminiUseVertex(res.gemini.geminiUseVertex ?? false);
     } catch (e: any) {
       toast.error(e.message || "Failed to load AI configuration");
     } finally {
@@ -80,7 +82,8 @@ function DiagnosticsPage() {
           openaiImageModel,
           openaiImageSize,
           geminiLlmModel,
-          geminiImageModel
+          geminiImageModel,
+          geminiUseVertex
         }
       });
       toast.success("AI Configuration settings saved successfully!");
@@ -280,6 +283,17 @@ function DiagnosticsPage() {
             </div>
             
             <div className="space-y-2 text-xs">
+              <div>
+                <label className="block text-[10px] font-semibold text-muted-foreground mb-1">Gemini API Endpoint Type</label>
+                <select
+                  value={geminiUseVertex ? "vertex" : "studio"}
+                  onChange={(e) => setGeminiUseVertex(e.target.value === "vertex")}
+                  className="w-full rounded border border-border bg-background px-2 py-1 text-[11px] outline-none focus:border-primary font-medium"
+                >
+                  <option value="studio">Google AI Studio (Developer API)</option>
+                  <option value="vertex">Google Cloud Vertex AI (Enterprise API)</option>
+                </select>
+              </div>
               <div>
                 <label className="block text-[10px] font-semibold text-muted-foreground mb-1">Text Generation Model</label>
                 <input

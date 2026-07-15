@@ -5,6 +5,7 @@ export interface AIProviderConfig {
   openaiImageSize: string;
   geminiLlmModel: string;
   geminiImageModel: string;
+  geminiUseVertex?: boolean;
 }
 
 export interface AIProvider {
@@ -56,7 +57,7 @@ export class GeminiProvider implements AIProvider {
     const key = process.env.GEMINI_API_KEY || process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("GEMINI_API_KEY environment variable is not defined");
 
-    const isVertex = key.startsWith("AQ");
+    const isVertex = this.config?.geminiUseVertex ?? key.startsWith("AQ");
     const model = this.config?.geminiLlmModel || process.env.GEMINI_LLM_MODEL || "gemini-1.5-flash";
     
     let url = "";
@@ -149,7 +150,7 @@ export class GeminiProvider implements AIProvider {
     const key = process.env.GEMINI_API_KEY || process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("GEMINI_API_KEY environment variable is not defined");
 
-    const isVertex = key.startsWith("AQ");
+    const isVertex = this.config?.geminiUseVertex ?? key.startsWith("AQ");
     const model = this.config?.geminiImageModel || process.env.GEMINI_IMAGE_MODEL || "imagen-3.0-generate-002";
 
     let url = "";
