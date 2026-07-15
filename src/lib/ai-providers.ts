@@ -4,7 +4,7 @@ export interface AIProvider {
   generateImage(prompt: string): Promise<Buffer>;
 }
 
-// 1. Google Gemini + Imagen Provider
+// 1. Google Gemini + Imagen Provider (Native REST API Endpoint)
 export class GeminiProvider implements AIProvider {
   name = "gemini";
 
@@ -12,29 +12,31 @@ export class GeminiProvider implements AIProvider {
     const key = process.env.GEMINI_API_KEY || process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("GEMINI_API_KEY environment variable is not defined");
 
-    const keyOrigin = process.env.GEMINI_API_KEY ? "GEMINI_API_KEY" : "LOVABLE_API_KEY";
-    const keyPrefix = key.slice(0, 6) + "..." + key.slice(-4);
-    const keyLength = key.length;
-
-    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "gemini-1.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: prompt },
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: prompt }]
+          }
         ],
+        systemInstruction: {
+          parts: [{ text: systemPrompt }]
+        }
       }),
     });
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      throw new Error(`Gemini LLM Call Failed [Origin: ${keyOrigin}, Prefix: ${keyPrefix}, Len: ${keyLength}]: ${text.slice(0, 200)}`);
+      throw new Error(`Gemini Native API LLM Call Failed: ${text.slice(0, 200)}`);
     }
 
     const json: any = await res.json();
-    return json?.choices?.[0]?.message?.content ?? "";
+    const textOut = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!textOut) throw new Error("No text content returned from Gemini API");
+    return textOut;
   }
 
   async generateImage(prompt: string): Promise<Buffer> {
@@ -65,14 +67,67 @@ export class GeminiProvider implements AIProvider {
   }
 }
 
-// 2. Placeholder OpenAI Provider
+// 2. OpenAI Provider (GPT-4o-mini + DALL-E-3)
 export class OpenAIProvider implements AIProvider {
   name = "openai";
+
   async callLLM(prompt: string, systemPrompt: string): Promise<string> {
-    throw new Error("OpenAI Provider is not configured. Add OPENAI_API_KEY to activate.");
+    const key = process.env.OPENAI_API_KEY;
+    if (!key) throw new Error("OPENAI_API_KEY environment variable is not defined");
+
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: prompt }
+        ]
+      })
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`OpenAI API LLM Call Failed: ${text.slice(0, 200)}`);
+    }
+
+    const json: any = await res.json();
+    return json?.choices?.[0]?.message?.content ?? "";
   }
+
   async generateImage(prompt: string): Promise<Buffer> {
-    throw new Error("OpenAI DALL-E Provider is not configured.");
+    const key = process.env.OPENAI_API_KEY;
+    if (!key) throw new Error("OPENAI_API_KEY environment variable is not defined");
+
+    const res = await fetch("https://api.openai.com/v1/images/generations", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`
+      },
+      body: JSON.stringify({
+        model: "dall-e-3",
+        prompt: prompt,
+        n: 1,
+        size: "1024x1024",
+        response_format: "b64_json"
+      })
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`OpenAI DALL-E Generation Failed: ${text.slice(0, 200)}`);
+    }
+
+    const json: any = await res.json();
+    const b64 = json?.data?.[0]?.b64_json;
+    if (!b64) throw new Error("No image data returned from OpenAI DALL-E API");
+
+    return Buffer.from(b64, "base64");
   }
 }
 
@@ -89,7 +144,7 @@ export class ClaudeProvider implements AIProvider {
 
 // Registry Helper
 export function getAIProvider(providerName?: string): AIProvider {
-  const p = (providerName || "gemini").toLowerCase();
+  const p = (providerName || process.env.ACTIVE_AI_PROVIDER || "gemini").toLowerCase();
   if (p === "openai") return new OpenAIProvider();
   if (p === "claude") return new ClaudeProvider();
   return new GeminiProvider();
