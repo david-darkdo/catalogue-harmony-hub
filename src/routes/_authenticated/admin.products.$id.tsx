@@ -29,6 +29,7 @@ function EditPage() {
   const [types, setTypes] = useState<{ id: string; name: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [assets, setAssets] = useState<AssetRow[]>([]);
+  const [isDirty, setIsDirty] = useState(false);
 
   const loadAssets = useCallback(async () => {
     const { data } = await supabase.from("product_assets").select("*").eq("product_id", id).order("created_at");
@@ -41,6 +42,17 @@ function EditPage() {
     setP(data);
     loadAssets();
   };
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = "Unsaved changes exist.";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [isDirty]);
+
   useEffect(() => {
     load();
     (async () => {
@@ -62,7 +74,10 @@ function EditPage() {
 
   if (!p) return <div className="container-app py-10 text-sm text-muted-foreground">Loading…</div>;
 
-  const set = (k: string, v: any) => setP((prev: any) => ({ ...prev, [k]: v }));
+  const set = (k: string, v: any) => {
+    setP((prev: any) => ({ ...prev, [k]: v }));
+    setIsDirty(true);
+  };
 
   const save = async () => {
     setSaving(true);
@@ -78,6 +93,7 @@ function EditPage() {
     const { error } = await supabase.from("products").update(payload as any).eq("id", id);
     setSaving(false);
     if (error) return toast.error(error.message);
+    setIsDirty(false);
     toast.success("Saved");
     load();
   };

@@ -8,7 +8,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import "@fontsource/space-grotesk/400.css";
 import "@fontsource/space-grotesk/500.css";
@@ -171,6 +171,23 @@ function RootComponent() {
 function RootAppWrapper() {
   const { user } = useAuth();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isPending = useRouterState({ select: (s) => s.status === "pending" });
+  const [showLoader, setShowLoader] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+
+  useEffect(() => {
+    setInitialLoading(false);
+  }, []);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (isPending) {
+      timer = setTimeout(() => setShowLoader(true), 150);
+    } else {
+      setShowLoader(false);
+    }
+    return () => clearTimeout(timer);
+  }, [isPending]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -203,6 +220,31 @@ function RootAppWrapper() {
 
   return (
     <div className="relative min-h-screen bg-background">
+      {/* Full Page Breathing Logo Loading Screen */}
+      {(showLoader || initialLoading) && (
+        <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-background">
+          <style>{`
+            @keyframes breathing {
+              0%, 100% { transform: scale(0.96); opacity: 0.85; }
+              50% { transform: scale(1.04); opacity: 1; }
+            }
+            .animate-breathing {
+              animation: breathing 2.5s ease-in-out infinite;
+            }
+          `}</style>
+          <div className="flex flex-col items-center gap-4 animate-breathing">
+            <img
+              src="/logo.png"
+              alt="Enreach Concepts Logo"
+              className="h-20 w-auto object-contain"
+            />
+            <p className="font-display text-[10px] tracking-widest text-muted-foreground uppercase">
+              Loading Luxury Showroom
+            </p>
+          </div>
+        </div>
+      )}
+
       <Outlet />
     </div>
   );

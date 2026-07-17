@@ -1,18 +1,98 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Home, Search, Compass, Bookmark, User, LogOut, Shield, Bell, X, AlertCircle, Trash2 } from "lucide-react";
+import {
+  Home,
+  Search,
+  Compass,
+  Bookmark,
+  User,
+  LogOut,
+  Shield,
+  Bell,
+  X,
+  AlertCircle,
+  Trash2,
+  Truck,
+  CreditCard,
+  Headphones,
+  HelpCircle
+} from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { FloatingWhatsApp } from "./FloatingWhatsApp";
+import { syncOfflineActions } from "@/lib/collection";
+import { toast } from "sonner";
 import { SiteFooter } from "./SiteFooter";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const [trustFeatures, setTrustFeatures] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchTrust = async () => {
+      const { data } = await supabase
+        .from("trust_features")
+        .select("*")
+        .order("order_index", { ascending: true });
+      if (data) setTrustFeatures(data);
+    };
+    void fetchTrust();
+  }, []);
+
+  useEffect(() => {
+    const handleOnline = () => {
+      toast.success("Connection restored! Syncing offline actions...");
+      void syncOfflineActions();
+    };
+    const handleOffline = () => {
+      toast.warning("Connection lost. Running in offline resilience mode.");
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    if (navigator.onLine) {
+      void syncOfflineActions();
+    }
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="flex min-h-screen flex-col bg-background">
       <TopBar />
-      <main>{children}</main>
-      <FloatingWhatsApp />
+      <main className="flex-1 pb-16 md:pb-0">{children}</main>
+
+      {/* Trust Information Strip */}
+      {trustFeatures.length > 0 && (
+        <section className="border-t border-border bg-card/65 backdrop-blur py-5 mt-auto">
+          <div className="container-app grid grid-cols-2 gap-4 md:grid-cols-4">
+            {trustFeatures.map((t) => {
+              const IconComponent =
+                t.icon_name === "Shield" ? Shield :
+                t.icon_name === "Truck" ? Truck :
+                t.icon_name === "CreditCard" ? CreditCard :
+                t.icon_name === "Headphones" ? Headphones : HelpCircle;
+              return (
+                <div key={t.id} className="flex gap-2.5 items-start">
+                  <div className="rounded-md bg-primary/10 p-1.5 text-primary shrink-0">
+                    <IconComponent className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-xs text-foreground tracking-tight">{t.title}</h4>
+                    <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug">{t.description}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       <SiteFooter />
+      <FloatingWhatsApp />
       <BottomNav />
     </div>
   );
@@ -25,6 +105,7 @@ function TopBar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const loadNotifications = async () => {
     if (!user?.id) return;
@@ -37,21 +118,59 @@ function TopBar() {
       .limit(10);
     if (data) {
       setNotifications(data);
+      const pending = data.filter(n => n.status === "PENDING").length;
+      setUnreadCount(pending);
     }
   };
 
   useEffect(() => {
-    if (user?.id && showNotifications) {
-      void loadNotifications();
+    if (!user?.id) return;
+
+    void loadNotifications();
+
+    // Subscribe to new communication queue alerts in real-time
+    const channel = supabase
+      .channel(`user-notifications-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "communication_queue",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          void loadNotifications();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
+  const openNotifications = async () => {
+    setShowNotifications(!showNotifications);
+    setMenuOpen(false);
+    if (!showNotifications && user?.id) {
+      // Mark all pending as READ/DELIVERED in DB so badge disappears
+      await supabase
+        .from("communication_queue")
+        .update({ status: "DELIVERED" })
+        .eq("user_id", user.id)
+        .eq("channel_type", "push")
+        .eq("status", "PENDING");
+      setUnreadCount(0);
     }
-  }, [user?.id, showNotifications]);
+  };
 
   const clearNotification = async (id: string) => {
     await supabase.from("communication_queue").delete().eq("id", id);
     void loadNotifications();
   };
 
-  const signOut = async () => {
+  const handleSignOut = async () => {
     await supabase.auth.signOut();
     setMenuOpen(false);
     navigate({ to: "/" });
@@ -61,11 +180,13 @@ function TopBar() {
     <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur">
       <div className="container-app flex items-center gap-3 py-3">
         <Link to="/" className="flex items-center gap-2">
-          <span className="grid h-8 w-8 place-items-center rounded-md bg-primary font-display text-sm font-bold text-primary-foreground">
-            S
-          </span>
-          <span className="hidden font-display text-base font-semibold tracking-tight sm:inline">
-            Stoneworks
+          <img
+            src="/logo.png"
+            alt="Enreach Concepts Logo"
+            className="h-8 w-auto object-contain"
+          />
+          <span className="hidden font-display text-base font-semibold tracking-tight sm:inline text-foreground">
+            Enreach Concepts
           </span>
         </Link>
         <form
@@ -90,15 +211,14 @@ function TopBar() {
           {user && (
             <div className="relative">
               <button
-                onClick={() => {
-                  setShowNotifications(!showNotifications);
-                  setMenuOpen(false);
-                }}
+                onClick={openNotifications}
                 className="relative grid h-9 w-9 place-items-center rounded-full border border-border bg-card text-foreground transition hover:border-primary"
               >
                 <Bell className="h-4 w-4" />
-                {notifications.filter(n => n.status === "PENDING").length > 0 && (
-                  <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary animate-pulse"></span>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white shadow-sm animate-pulse">
+                    {unreadCount}
+                  </span>
                 )}
               </button>
 
@@ -111,13 +231,13 @@ function TopBar() {
 
                   <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                     {notifications.map((notif) => (
-                      <div key={notif.id} className="p-2 border border-border rounded bg-background flex gap-2 relative group">
+                      <div key={notif.id} className="p-2 border border-border rounded bg-background flex gap-2 relative group text-left">
                         <AlertCircle className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                         <div className="flex-1 min-w-0">
                           <div className="font-semibold text-foreground truncate">{notif.subject || "Alert"}</div>
                           <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{notif.body}</p>
                         </div>
-                        <button 
+                        <button
                           onClick={(e) => { e.stopPropagation(); clearNotification(notif.id); }}
                           className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition"
                         >
@@ -146,26 +266,35 @@ function TopBar() {
             >
               <User className="h-4 w-4" />
             </button>
-          {menuOpen && (
-            <div className="absolute right-0 mt-2 w-48 overflow-hidden rounded-md border border-border bg-card shadow-lg">
-              {user ? (
-                <>
-                  <div className="border-b border-border px-3 py-2 text-xs text-muted-foreground truncate">{user.email}</div>
-                  <Link to="/collection" onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-sm hover:bg-surface-2">My Collection</Link>
-                  {isAdmin && (
-                    <Link to="/admin" onClick={() => setMenuOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-surface-2"><Shield className="h-3.5 w-3.5" /> Admin</Link>
-                  )}
-                  <button onClick={signOut} className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-surface-2"><LogOut className="h-3.5 w-3.5" /> Sign out</button>
-                </>
-              ) : (
-                <>
-                  <Link to="/auth" onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-sm hover:bg-surface-2">Sign in</Link>
-                  <Link to="/collection" onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-sm hover:bg-surface-2">My Collection</Link>
-                  <Link to="/account" onClick={() => setMenuOpen(false)} className="block px-3 py-2 text-sm hover:bg-surface-2">Contact</Link>
-                </>
-              )}
-            </div>
-          )}
+            {menuOpen && (
+              <div className="absolute right-0 mt-2 w-48 rounded-lg border border-border bg-card py-1 shadow-lg z-50">
+                <Link
+                  to="/favorites"
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted"
+                >
+                  <Bookmark className="h-4 w-4" />
+                  <span>My Favorites</span>
+                </Link>
+                {isAdmin && (
+                  <Link
+                    to="/admin"
+                    onClick={() => setMenuOpen(false)}
+                    className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-muted"
+                  >
+                    <Shield className="h-4 w-4" />
+                    <span>Admin Panel</span>
+                  </Link>
+                )}
+                <button
+                  onClick={handleSignOut}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-destructive hover:bg-muted"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Sign out</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -174,32 +303,33 @@ function TopBar() {
 }
 
 function BottomNav() {
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const items = [
-    { to: "/home" as const, label: "Home", icon: Home, active: pathname.startsWith("/home") },
-    { to: "/search" as const, label: "Search", icon: Search, active: pathname.startsWith("/search") },
-    { to: "/" as const, label: "Feed", icon: Compass, active: pathname === "/" },
-    { to: "/collection" as const, label: "Collection", icon: Bookmark, active: pathname.startsWith("/collection") },
-    { to: "/account" as const, label: "Account", icon: User, active: pathname.startsWith("/account") },
+  const { user } = useAuth();
+  const searchState = useRouterState({ select: (s) => s.location.pathname });
+
+  const nav = [
+    { to: "/" as const, label: "Home", icon: Home, active: searchState === "/" },
+    { to: "/search" as const, label: "Search", icon: Search, active: searchState.startsWith("/search") },
+    { to: "/collection" as const, label: "Feed", icon: Compass, active: searchState.startsWith("/collection") },
+    { to: "/favorites" as const, label: "Collection", icon: Bookmark, active: searchState.startsWith("/favorites") },
+    { to: user ? ("/favorites" as const) : ("/auth" as const), label: "Account", icon: User, active: searchState.startsWith("/auth") },
   ];
+
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 backdrop-blur">
-      <ul className="container-app flex items-center justify-between py-2">
-        {items.map((it, i) => (
-          <li key={i} className="flex-1">
-            <Link
-              to={it.to}
-              search={it.to === "/search" ? { q: "" } : undefined}
-              className={`flex flex-col items-center gap-0.5 py-1 text-[10px] uppercase tracking-wider transition ${
-                it.active ? "text-primary" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <it.icon className="h-5 w-5" />
-              {it.label}
-            </Link>
-          </li>
+    <nav className="fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-background/90 py-2 backdrop-blur md:hidden">
+      <div className="flex justify-around">
+        {nav.map((t) => (
+          <Link
+            key={t.label}
+            to={t.to}
+            className={`flex flex-col items-center gap-0.5 text-[10px] font-medium transition ${
+              t.active ? "text-primary" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <t.icon className="h-5 w-5" />
+            <span>{t.label}</span>
+          </Link>
         ))}
-      </ul>
+      </div>
     </nav>
   );
 }

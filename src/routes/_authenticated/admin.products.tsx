@@ -141,9 +141,28 @@ function ProductLibrary() {
   const bulk = async (label: string, patch: Record<string, any>) => {
     if (!selected.size) return;
     const ids = Array.from(selected);
+    
+    // Fetch previous states for Undo
+    const { data: previous } = await supabase.from("products").select("id, status, deleted_at").in("id", ids);
+
     const { error } = await supabase.from("products").update(patch as any).in("id", ids);
     if (error) return toast.error(error.message);
-    toast.success(`${label}: ${ids.length} product(s)`);
+    
+    toast.success(`${label}: ${ids.length} product(s)`, {
+      action: {
+        label: "Undo",
+        onClick: async () => {
+          for (const prev of previous || []) {
+            await supabase.from("products").update({
+              status: prev.status,
+              deleted_at: prev.deleted_at
+            } as any).eq("id", prev.id);
+          }
+          toast.success("Bulk actions undone!");
+          load();
+        }
+      }
+    });
     setSelected(new Set());
     load();
   };
@@ -160,10 +179,37 @@ function ProductLibrary() {
   };
 
   const rowAction = async (id: string, label: string, patch: Record<string, any>) => {
+    // Fetch previous state for Undo
+    const { data: prev } = await supabase.from("products").select("status, deleted_at").eq("id", id).single();
+
     const { error } = await supabase.from("products").update(patch as any).eq("id", id);
     if (error) return toast.error(error.message);
-    toast.success(label);
+    
+    toast.success(label, {
+      description: "You can undo this action if needed.",
+      action: {
+        label: "Undo",
+        onClick: async () => {
+          await supabase.from("products").update({
+            status: prev?.status,
+            deleted_at: prev?.deleted_at
+          } as any).eq("id", id);
+          toast.success("Action undone!");
+          load();
+        }
+      }
+    });
     load();
+  };
+
+  const confirmPublish = (id: string, name: string) => {
+    toast(`Publish "${name}"?`, {
+      description: "This will make it instantly live on the showroom storefront.",
+      action: {
+        label: "Publish",
+        onClick: () => rowAction(id, "Published", { status: "published" })
+      }
+    });
   };
 
   const duplicate = async (id: string) => {
@@ -302,7 +348,7 @@ function ProductLibrary() {
                     <div className="flex flex-wrap gap-1">
                       <Link to="/admin/products/$id" params={{ id: r.id }} className="rounded border border-border px-1.5 py-0.5 hover:border-primary">Edit</Link>
                       <button onClick={() => duplicate(r.id)} className="rounded border border-border px-1.5 py-0.5 hover:border-primary">Duplicate</button>
-                      <button onClick={() => rowAction(r.id, "Published", { status: "published" })} className="rounded border border-border px-1.5 py-0.5 hover:border-primary">Publish</button>
+                      <button onClick={() => confirmPublish(r.id, r.name)} className="rounded border border-border px-1.5 py-0.5 hover:border-primary">Publish</button>
                       <button onClick={() => rowAction(r.id, "Archived", { status: "archived" })} className="rounded border border-border px-1.5 py-0.5 hover:border-primary">Archive</button>
                       <button onClick={() => rowAction(r.id, "AI queued", { ai_status: "queued", is_ai_processing: true })} className="rounded border border-border px-1.5 py-0.5 hover:border-primary">Regen AI</button>
                       {r.deleted_at ? (

@@ -20,6 +20,18 @@ function DiagnosticsPage() {
 
   const [config, setConfig] = useState<any>(null);
   const [loadingConfig, setLoadingConfig] = useState(true);
+  const [checklist, setChecklist] = useState<any[]>([
+    { id: "domain", label: "Domain Configuration", desc: "Domain mapped and configured properly on Vercel.", done: true },
+    { id: "ssl", label: "SSL Certificate active", desc: "Secure HTTPS active and valid.", done: true },
+    { id: "sitemap", label: "Sitemap.xml generated", desc: "Dynamic sitemap is readable at /sitemap.xml.", done: true },
+    { id: "robots", label: "Robots.txt active", desc: "Robots rules mapping verified.", done: true },
+    { id: "google_verify", label: "Google Search Console", desc: "HTML meta verification key injected into root route.", done: false },
+    { id: "bing_verify", label: "Bing Webmaster Console", desc: "Bing verification key injected into root route.", done: false },
+    { id: "resend", label: "Resend Email Integration", desc: "API key and sender domain verified.", done: true },
+    { id: "push", label: "Push Notifications system", desc: "Push device database outbox registration tests.", done: true },
+    { id: "pwa", label: "PWA Install readiness", desc: "Manifest and logos verified in PWA installer.", done: true },
+    { id: "mobile_qa", label: "Mobile / Tablet QA pass", desc: "Refined viewports and touch targets verified.", done: true }
+  ]);
   const [savingSettings, setSavingSettings] = useState(false);
   
   const [discovery, setDiscovery] = useState<any>(null);
@@ -89,7 +101,20 @@ function DiagnosticsPage() {
   useEffect(() => {
     loadConfig();
     loadDiscovery();
+    const saved = localStorage.getItem("stoneworks.launch_checklist");
+    if (saved) {
+      try {
+        setChecklist(JSON.parse(saved));
+      } catch {}
+    }
   }, []);
+
+  const toggleChecklistItem = (id) => {
+    const updated = checklist.map(item => item.id === id ? { ...item, done: !item.done } : item);
+    setChecklist(updated);
+    localStorage.setItem("stoneworks.launch_checklist", JSON.stringify(updated));
+    toast.success("Launch checklist progress saved!");
+  };
 
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -648,6 +673,55 @@ Sitemap: /sitemap.xml`}
           </div>
         )}
       </div>
+      {/* 3. LAUNCH PREPARATION CHECKLIST PANEL */}
+      <section className="rounded-xl border border-border bg-card p-5 space-y-4">
+        <div className="flex items-center gap-2 border-b border-border pb-3">
+          <CheckSquare className="h-4.5 w-4.5 text-primary" />
+          <h2 className="font-display font-semibold">Production Launch Readiness Checklist</h2>
+        </div>
+        
+        <p className="text-xs text-muted-foreground">
+          Track release checklist checks, domain SSL mappings, search engine console verifications, email outbox systems, and device viewport tests.
+        </p>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          {checklist.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => toggleChecklistItem(item.id)}
+              className="flex items-start gap-3 rounded-lg border border-border bg-background p-3 text-left hover:border-primary transition group"
+            >
+              <div className={`mt-0.5 rounded border p-0.5 shrink-0 transition ${ 
+                item.done ? "bg-primary border-primary text-primary-foreground" : "border-border text-transparent group-hover:border-primary"
+              }`}>
+                <Check className="h-3 w-3" />
+              </div>
+              <div>
+                <h4 className={`text-xs font-semibold ${item.done ? "text-foreground line-through opacity-75" : "text-foreground"}`}>
+                  {item.label}
+                </h4>
+                <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug">{item.desc}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* Progress Bar */}
+        <div className="pt-2">
+          <div className="flex items-center justify-between text-xs mb-1">
+            <span className="font-semibold text-muted-foreground">Launch Readiness Score</span>
+            <span className="font-bold text-primary">
+              {Math.round((checklist.filter(c => c.done).length / checklist.length) * 100)}%
+            </span>
+          </div>
+          <div className="w-full bg-muted h-2 rounded-full overflow-hidden">
+            <div
+              style={{ width: `${(checklist.filter(c => c.done).length / checklist.length) * 100}%` }}
+              className="bg-primary h-full transition-all duration-500"
+            />
+          </div>
+        </div>
+      </section>
     </div>
   );
 }

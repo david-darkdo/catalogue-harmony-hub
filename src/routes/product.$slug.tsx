@@ -3,10 +3,10 @@ import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
 import { ProductCard } from "@/components/ProductCard";
 import { fetchProductBySlug, fetchRelatedProducts } from "@/lib/catalog";
-import { ArrowLeft, Heart, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Heart, ShoppingBag, X, ZoomIn, ZoomOut, ChevronLeft, ChevronRight } from "lucide-react";
 import { AddToCollectionButton } from "@/components/AddToCollectionButton";
 import { publicImageUrl } from "@/components/ImageUploader";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -65,13 +65,11 @@ export const Route = createFileRoute("/product/$slug")({
       meta: [
         { title: title },
         { name: "description", content: desc },
-        // Open Graph / Facebook
         { property: "og:type", content: "product" },
         { property: "og:title", content: title },
         { property: "og:description", content: desc },
         { property: "og:image", content: imageUrl ? publicImageUrl(imageUrl) : "" },
         { property: "og:url", content: canonical },
-        // Twitter Card
         { name: "twitter:card", content: "summary_large_image" },
         { name: "twitter:title", content: title },
         { name: "twitter:description", content: desc },
@@ -83,6 +81,7 @@ export const Route = createFileRoute("/product/$slug")({
     };
   },
   component: ProductPage,
+  pendingComponent: ProductDetailSkeleton,
   notFoundComponent: () => (
     <AppShell>
       <div className="container-app py-16 text-center">
@@ -94,12 +93,42 @@ export const Route = createFileRoute("/product/$slug")({
     </AppShell>
   ),
   errorComponent: ({ error }) => (
-    <div className="p-6 text-sm text-destructive">{error.message}</div>
+    <AppShell>
+      <div className="container-app py-16 text-center text-sm text-destructive">
+        <h2 className="font-semibold text-lg">Failed to load product page</h2>
+        <p className="mt-2 text-muted-foreground">{error.message}</p>
+        <Link to="/" className="mt-4 inline-block text-primary underline">Back to feed</Link>
+      </div>
+    </AppShell>
   ),
 });
 
+function ProductDetailSkeleton() {
+  return (
+    <AppShell>
+      <div className="container-app py-8 space-y-6 animate-pulse">
+        {/* Breadcrumb skeleton */}
+        <div className="h-3 w-48 bg-muted rounded"></div>
+
+        {/* Gallery skeleton */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="aspect-square w-full bg-muted rounded-2xl"></div>
+          <div className="aspect-[4/3] w-full bg-muted rounded-2xl"></div>
+        </div>
+
+        {/* Details skeleton */}
+        <div className="space-y-3">
+          <div className="h-3.5 w-32 bg-muted rounded"></div>
+          <div className="h-8 w-80 bg-muted rounded"></div>
+          <div className="h-6 w-24 bg-muted rounded"></div>
+          <div className="h-20 w-full bg-muted rounded"></div>
+        </div>
+      </div>
+    </AppShell>
+  );
+}
+
 function ProductPage() {
-  const { slug } = Route.useParams();
   const { product, origin, taxonomy } = Route.useLoaderData();
   const { data: related = [] } = useSuspenseQuery(
     relatedQuery(product.family_id, product.id),
@@ -109,11 +138,23 @@ function ProductPage() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [recommendations, setRecommendations] = useState<any[]>([]);
 
+  // Gallery slider states
+  const [activeImgIndex, setActiveImgIndex] = useState(0);
+  const [lightboxImg, setLightboxImg] = useState<string | null>(null);
+  const [lightboxScale, setLightboxScale] = useState(1);
+
+  const studio = publicImageUrl(product.generated_studio_image) || publicImageUrl(product.image_url);
+  const installed = publicImageUrl(product.generated_installed_image) || publicImageUrl(product.image_url);
+
+  const galleryImages = useMemo(() => {
+    return [studio, installed].filter(Boolean) as string[];
+  }, [studio, installed]);
+
   useEffect(() => {
     if (!product?.id) return;
 
-    // Track viewed event in activity timeline
     if (user?.id) {
+      // Track page views
       const trackEvent = async () => {
         await supabase.from("customer_activity").insert({
           user_id: user.id,
@@ -161,7 +202,7 @@ function ProductPage() {
         if (error) throw error;
         setIsFavorite(true);
         toast.success("Saved to favorites");
-        // Log event to bus
+        // Log event to event bus
         await supabase.from("customer_activity").insert({
           user_id: user.id,
           activity_type: "favorites_changed",
@@ -173,28 +214,25 @@ function ProductPage() {
     }
   };
 
-  const studio = publicImageUrl(product.generated_studio_image) || publicImageUrl(product.image_url);
-  const installed = publicImageUrl(product.generated_installed_image) || publicImageUrl(product.image_url);
-
-  // Build breadcrumbs paths
-  const breadcrumbs = [
-    { label: "Home", path: "/" }
-  ];
-  if (taxonomy.type) {
-    breadcrumbs.push({ label: taxonomy.type.name, path: `/${taxonomy.type.slug}` });
-    if (taxonomy.category) {
-      breadcrumbs.push({ label: taxonomy.category.name, path: `/${taxonomy.type.slug}/${taxonomy.category.slug}` });
-      if (taxonomy.subcategory) {
-        breadcrumbs.push({ label: taxonomy.subcategory.name, path: `/${taxonomy.type.slug}/${taxonomy.category.slug}/${taxonomy.subcategory.slug}` });
-        if (taxonomy.family) {
-          breadcrumbs.push({ label: taxonomy.family.name, path: `/${taxonomy.type.slug}/${taxonomy.category.slug}/${taxonomy.subcategory.slug}/${taxonomy.family.slug}` });
+  // Breadcrumbs config
+  const breadcrumbs = useMemo(() => {
+    const list = [{ label: "Home", path: "/" }];
+    if (taxonomy.type) {
+      list.push({ label: taxonomy.type.name, path: `/${taxonomy.type.slug}` });
+      if (taxonomy.category) {
+        list.push({ label: taxonomy.category.name, path: `/${taxonomy.type.slug}/${taxonomy.category.slug}` });
+        if (taxonomy.subcategory) {
+          list.push({ label: taxonomy.subcategory.name, path: `/${taxonomy.type.slug}/${taxonomy.category.slug}/${taxonomy.subcategory.slug}` });
+          if (taxonomy.family) {
+            list.push({ label: taxonomy.family.name, path: `/${taxonomy.type.slug}/${taxonomy.category.slug}/${taxonomy.subcategory.slug}/${taxonomy.family.slug}` });
+          }
         }
       }
     }
-  }
-  breadcrumbs.push({ label: product.name, path: `/product/${product.slug}` });
+    list.push({ label: product.name, path: `/product/${product.slug}` });
+    return list;
+  }, [taxonomy, product]);
 
-  // Schema BreadcrumbList
   const breadcrumbSchema = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -210,7 +248,7 @@ function ProductPage() {
     "@context": "https://schema.org",
     "@type": "Product",
     "name": product.name,
-    "image": [studio, installed].filter(Boolean),
+    "image": galleryImages,
     "description": product.generated_description || product.short_description || "",
     "sku": product.code,
     "mpn": product.code,
@@ -228,139 +266,177 @@ function ProductPage() {
     }
   };
 
+  const handleLightboxNav = (dir: "prev" | "next") => {
+    const idx = galleryImages.indexOf(lightboxImg || "");
+    if (idx === -1) return;
+    if (dir === "prev") {
+      const nextIdx = (idx - 1 + galleryImages.length) % galleryImages.length;
+      setLightboxImg(galleryImages[nextIdx]);
+    } else {
+      const nextIdx = (idx + 1) % galleryImages.length;
+      setLightboxImg(galleryImages[nextIdx]);
+    }
+    setLightboxScale(1); // Reset zoom scale
+  };
+
   return (
     <AppShell>
-      {/* Structured Data JSON-LD Injections */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }}
-      />
+      {/* Schema LD Injections */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }} />
       {product.structured_data && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(product.structured_data) }}
-        />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(product.structured_data) }} />
       )}
-      <div className="container-app pt-2">
-        {/* Visual Breadcrumb navigation */}
-        <nav className="flex items-center gap-1.5 overflow-x-auto pb-3 text-[10px] uppercase tracking-wider text-muted-foreground">
+
+      <div className="container-app pt-2 pb-10">
+        {/* Breadcrumb Row */}
+        <nav className="flex items-center gap-1.5 overflow-x-auto pb-3 text-[10px] uppercase tracking-wider text-muted-foreground scrollbar-none">
           {breadcrumbs.map((b, index) => (
             <span key={index} className="flex items-center gap-1.5 shrink-0">
-              {index > 0 && <span className="text-muted-foreground/40">/</span>}
+              {index > 0 && <span className="text-muted-foreground/30">/</span>}
               {index === breadcrumbs.length - 1 ? (
-                <span className="font-semibold text-foreground">{b.label}</span>
+                <span className="font-semibold text-foreground truncate max-w-[120px]">{b.label}</span>
               ) : (
-                <Link to={b.path} className="hover:text-primary transition">
-                  {b.label}
-                </Link>
+                <Link to={b.path} className="hover:text-primary transition">{b.label}</Link>
               )}
             </span>
           ))}
         </nav>
 
-
+        {/* Gallery Grid */}
         <div className="mt-3 grid gap-4 md:grid-cols-2">
-          <div className="overflow-hidden rounded-2xl border border-border bg-muted">
-            <img
-              src={studio ?? ""}
-              alt={product.name}
-              className="aspect-square w-full object-cover"
-            />
+          {/* Main Studio View */}
+          <div className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm aspect-square flex items-center justify-center">
+            {galleryImages[activeImgIndex] ? (
+              <img
+                src={galleryImages[activeImgIndex]}
+                alt={product.name}
+                onClick={() => setLightboxImg(galleryImages[activeImgIndex])}
+                className="w-full h-full object-cover cursor-zoom-in hover:scale-[1.01] transition-transform duration-300"
+              />
+            ) : (
+              <div className="text-xs text-muted-foreground italic">No image assets</div>
+            )}
           </div>
-          <div className="overflow-hidden rounded-2xl border border-border bg-muted">
-            <img
-              src={installed ?? ""}
-              alt={`${product.name} installed`}
-              loading="lazy"
-              className="aspect-square w-full object-cover"
-            />
-            <p className="px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              Installed reference
-            </p>
+
+          {/* Installed Lifestyle Reference with Aspect Ratio Preservation */}
+          <div className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm flex flex-col justify-between min-h-[300px]">
+            <div className="flex-1 flex items-center justify-center p-2 bg-muted/20">
+              {installed ? (
+                <img
+                  src={installed}
+                  alt={`${product.name} installed scene`}
+                  loading="lazy"
+                  onClick={() => setLightboxImg(installed)}
+                  className="w-full h-auto max-h-[40vh] object-contain cursor-zoom-in hover:opacity-95 transition-opacity"
+                />
+              ) : (
+                <div className="text-xs text-muted-foreground italic">No installed preview uploaded</div>
+              )}
+            </div>
+            <div className="border-t border-border px-3.5 py-2 text-[9px] uppercase tracking-[0.18em] text-muted-foreground font-semibold bg-background">
+              Installed reference / lifestyle layout
+            </div>
           </div>
         </div>
 
-        <div className="mt-6">
-          <p className="text-xs uppercase tracking-[0.18em] text-accent">
-            {product.brand ?? "Enreach Concepts"} · Code {product.code}
-          </p>
-          <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight">
-            {product.name}
-          </h1>
-          <p className="mt-2 font-display text-2xl font-semibold text-[oklch(0.55_0.1_82)]">
-            ${Number(product.price).toFixed(2)}
-            <span className="ml-1 text-sm font-normal text-muted-foreground">/sqm</span>
-          </p>
+        {/* Thumbnail Selector Bar */}
+        {galleryImages.length > 1 && (
+          <div className="flex gap-2.5 mt-3 overflow-x-auto pb-1 scrollbar-none">
+            {galleryImages.map((imgUrl, i) => (
+              <button
+                key={i}
+                onClick={() => setActiveImgIndex(i)}
+                className={`h-14 w-14 rounded-lg border overflow-hidden shrink-0 transition bg-card ${
+                  activeImgIndex === i ? "border-primary shadow-sm" : "border-border hover:border-primary/45"
+                }`}
+              >
+                <img src={imgUrl} alt="thumbnail" className="h-full w-full object-cover" />
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Product Details Section */}
+        <div className="mt-6 space-y-4">
+          <div>
+            <p className="text-xs font-mono uppercase tracking-[0.18em] text-primary font-bold">
+              {product.brand || "Enreach Concepts"} · Code {product.code}
+            </p>
+            <h1 className="mt-1 font-display text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight uppercase">
+              {product.name}
+            </h1>
+            <p className="mt-1.5 font-display text-2xl font-bold text-primary">
+              ${Number(product.price).toFixed(2)}
+              <span className="ml-1 text-sm font-normal text-muted-foreground">/sqm</span>
+            </p>
+          </div>
 
           {product.short_description && (
-            <p className="mt-4 max-w-prose text-sm leading-relaxed text-muted-foreground">
+            <div className="rounded-xl border border-border/80 bg-card p-4 text-xs leading-relaxed text-muted-foreground max-w-prose shadow-sm">
               {product.short_description}
-            </p>
+            </div>
           )}
 
-          <dl className="mt-5 grid grid-cols-3 gap-3 text-xs">
+          {/* Technical Specifications */}
+          <dl className="grid grid-cols-3 gap-3 text-xs max-w-lg">
             {[
               ["Color", product.color],
               ["Material", product.material],
               ["Finish", product.finish],
             ].map(([k, v]) =>
               v ? (
-                <div
-                  key={k as string}
-                  className="rounded-lg border border-border bg-surface p-3"
-                >
-                  <dt className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                    {k}
-                  </dt>
-                  <dd className="mt-1 font-medium text-foreground">{v}</dd>
+                <div key={k as string} className="rounded-lg border border-border bg-card p-3 shadow-sm">
+                  <dt className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">{k}</dt>
+                  <dd className="mt-1 font-semibold text-foreground text-xs">{v}</dd>
                 </div>
               ) : null,
             )}
           </dl>
 
-          <div className="mt-6 flex gap-2">
+          {/* Actions Bar */}
+          <div className="flex gap-2.5 max-w-md pt-2">
             <AddToCollectionButton
               productId={product.id}
-              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
+              className="flex flex-1 items-center justify-center gap-2 rounded bg-primary px-5 py-3 text-xs font-bold uppercase tracking-wider text-primary-foreground hover:bg-primary/95 transition shadow-sm"
             />
-            <button 
+            <button
               onClick={toggleFavorite}
-              className={`rounded-lg px-4 py-3 border transition flex items-center justify-center gap-2 ${
-                isFavorite 
-                  ? "bg-red-500/10 border-red-500/20 text-red-500 hover:bg-red-500/25" 
+              className={`rounded px-5 py-3 border text-xs font-bold uppercase tracking-wider transition flex items-center justify-center gap-2 ${
+                isFavorite
+                  ? "bg-red-500/10 border-red-500/20 text-red-500 hover:bg-red-500/20"
                   : "border-border text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
             >
-              <Heart className={`h-4 w-4 ${isFavorite ? "fill-red-500" : ""}`} />
+              <Heart className={`h-4 w-4 ${isFavorite ? "fill-red-500 text-red-500" : ""}`} />
               {isFavorite ? "Saved" : "Favorite"}
             </button>
           </div>
         </div>
 
+        {/* RELATED PRODUCTS */}
         {related.length > 0 && (
-          <section className="mt-12">
-            <h2 className="font-display text-xs uppercase tracking-[0.18em] text-accent">
-              From the same family
+          <section className="mt-12 border-t border-border/50 pt-8">
+            <h2 className="font-display text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
+              From the same design family
             </h2>
-            <p className="font-display text-xl font-semibold">Related products</p>
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            <p className="font-display text-lg font-extrabold text-foreground uppercase tracking-tight">Related materials</p>
+            <div className="mt-3.5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {related.map((p) => (
                 <ProductCard key={p.id} product={p} />
               ))}
             </div>
           </section>
         )}
+
+        {/* RECOMMENDED PRODUCTS */}
         {recommendations.length > 0 && (
-          <section className="mt-12 pt-6 border-t border-border">
-            <h2 className="font-display text-xs uppercase tracking-[0.18em] text-accent">
+          <section className="mt-12 border-t border-border pt-8">
+            <h2 className="font-display text-[10px] font-bold uppercase tracking-[0.18em] text-primary">
               Tailored for your design style
             </h2>
-            <p className="font-display text-xl font-semibold">Recommended for you</p>
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            <p className="font-display text-lg font-extrabold text-foreground uppercase tracking-tight">Recommended for you</p>
+            <div className="mt-3.5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {recommendations.map((p) => (
                 <ProductCard key={p.id} product={p} />
               ))}
@@ -368,6 +444,82 @@ function ProductPage() {
           </section>
         )}
       </div>
+
+      {/* FULLSCREEN LIGHTBOX GALLERY MODAL */}
+      {lightboxImg && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 transition-all">
+          {/* Close Area */}
+          <div className="absolute inset-0" onClick={() => setLightboxImg(null)} />
+
+          {/* Image & Controls wrapper */}
+          <div className="relative z-10 flex flex-col items-center max-w-4xl max-h-[85vh] px-4">
+            <div className="overflow-hidden flex items-center justify-center bg-zinc-900 rounded-lg">
+              <img
+                src={lightboxImg}
+                alt="Fullscreen view"
+                style={{ transform: `scale(${lightboxScale})` }}
+                className="max-w-full max-h-[75vh] object-contain transition-transform duration-250 ease-out"
+              />
+            </div>
+
+            {/* Scale Indicator */}
+            {lightboxScale !== 1 && (
+              <span className="absolute bottom-20 bg-black/55 text-white text-[9px] px-2 py-0.5 rounded font-mono">
+                Zoom: {Math.round(lightboxScale * 100)}%
+              </span>
+            )}
+
+            {/* Slider / Controls Panel */}
+            <div className="mt-4 flex items-center justify-center gap-6 text-white bg-black/45 p-2 rounded-full border border-white/10">
+              <button
+                onClick={() => handleLightboxNav("prev")}
+                className="p-2 rounded-full hover:bg-white/15 transition"
+                aria-label="Previous image"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setLightboxScale(s => Math.min(s + 0.25, 3))}
+                  className="p-1.5 rounded hover:bg-white/15 transition flex items-center gap-1 text-[10px] font-semibold"
+                >
+                  <ZoomIn className="h-4 w-4" /> Zoom In
+                </button>
+                <button
+                  onClick={() => setLightboxScale(s => Math.max(s - 0.25, 0.75))}
+                  className="p-1.5 rounded hover:bg-white/15 transition flex items-center gap-1 text-[10px] font-semibold"
+                >
+                  <ZoomOut className="h-4 w-4" /> Zoom Out
+                </button>
+                <button
+                  onClick={() => setLightboxScale(1)}
+                  className="p-1.5 rounded hover:bg-white/15 transition text-[10px] font-semibold"
+                >
+                  Reset
+                </button>
+              </div>
+
+              <button
+                onClick={() => handleLightboxNav("next")}
+                className="p-2 rounded-full hover:bg-white/15 transition"
+                aria-label="Next image"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Close button top right */}
+          <button
+            onClick={() => setLightboxImg(null)}
+            className="absolute top-4 right-4 z-20 rounded-full p-2 bg-white/15 text-white hover:bg-white/25 transition"
+            aria-label="Close fullscreen gallery"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+      )}
     </AppShell>
   );
 }

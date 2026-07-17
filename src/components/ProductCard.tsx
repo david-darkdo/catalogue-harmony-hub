@@ -2,16 +2,102 @@ import { Link } from "@tanstack/react-router";
 import type { ProductRow } from "@/lib/catalog";
 import { AddToCollectionButton } from "./AddToCollectionButton";
 import { publicImageUrl } from "./ImageUploader";
+import { Heart } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
+import { toast } from "sonner";
 
 export function ProductCard({ product }: { product: ProductRow }) {
+  const { user } = useAuth();
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [loading, setLoading] = useState(false);
+
   const img =
     publicImageUrl(product.generated_studio_image) ||
     publicImageUrl(product.image_url) ||
     "https://placehold.co/600x600/eee/aaa?text=No+Image";
 
+  // Check if item is favorited on load
+  useEffect(() => {
+    if (!user?.id) return;
+    const checkFavorite = async () => {
+      const { data } = await supabase
+        .from("favorites")
+        .select("product_id")
+        .eq("user_id", user.id)
+        .eq("product_id", product.id)
+        .maybeSingle();
+      if (data) setIsFavorite(true);
+    };
+    void checkFavorite();
+  }, [user?.id, product.id]);
+
+  // Determine if product is recently published (newer than 7 days)
+  const isNew = useMemo(() => {
+    if (!product.created_at) return false;
+    const createdDate = new Date(product.created_at);
+    const diffTime = Math.abs(new Date().getTime() - createdDate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays <= 7;
+  }, [product.created_at]);
+
+  const toggleFavorite = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user?.id) {
+      toast.error("Please login to save favorites.");
+      return;
+    }
+    setLoading(true);
+    try {
+      if (isFavorite) {
+        const { error } = await supabase
+          .from("favorites")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("product_id", product.id);
+        if (error) throw error;
+        setIsFavorite(false);
+        toast.success("Removed from favorites");
+      } else {
+        const { error } = await supabase
+          .from("favorites")
+          .insert({
+            user_id: user.id,
+            product_id: product.id
+          });
+        if (error) throw error;
+        setIsFavorite(true);
+        toast.success("Added to favorites");
+      }
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition hover:shadow-md">
+    <div className="group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-md hover:border-primary/20">
+      {/* Floating Badges */}
+      {isNew && (
+        <span className="absolute top-2.5 left-2.5 z-10 bg-primary/90 backdrop-blur px-2 py-0.5 rounded text-[9px] font-bold text-primary-foreground tracking-wide uppercase shadow">
+          New
+        </span>
+      )}
+
+      {/* Floating Favorite Heart Icon */}
+      {user && (
+        <button
+          onClick={toggleFavorite}
+          disabled={loading}
+          className="absolute top-2.5 right-2.5 z-10 rounded-full p-2 bg-background/85 hover:bg-background text-foreground transition shadow border border-border/80 focus:outline-none"
+        >
+          <Heart className={`h-3.5 w-3.5 transition-colors duration-300 ${isFavorite ? "text-destructive fill-destructive" : "text-muted-foreground hover:text-foreground"}`} />
+        </button>
+      )}
+
       <Link
         to="/product/$slug"
         params={{ slug: product.slug }}
@@ -21,28 +107,29 @@ export function ProductCard({ product }: { product: ProductRow }) {
           src={img}
           alt={product.name}
           loading="lazy"
-          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+          className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
         />
       </Link>
+
       <div className="flex flex-1 flex-col gap-2 p-3">
         <div>
-          <h3 className="font-display text-base font-semibold leading-tight text-foreground line-clamp-1">
+          <h3 className="font-display text-sm font-semibold leading-tight text-foreground line-clamp-1 group-hover:text-primary transition-colors">
             {product.name}
           </h3>
-          <p className="mt-0.5 text-[11px] uppercase tracking-wider text-muted-foreground">
+          <p className="mt-0.5 text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
             Code · {product.code}
           </p>
         </div>
-        <p className="font-display text-lg font-semibold text-[oklch(0.55_0.1_82)]">
+        <p className="font-display text-base font-bold text-primary mt-1">
           ${Number(product.price).toFixed(2)}
-          <span className="ml-1 text-xs font-normal text-muted-foreground">/sqm</span>
+          <span className="ml-1 text-[10px] font-normal text-muted-foreground">/sqm</span>
         </p>
-        <div className="mt-auto flex gap-2 pt-2">
+        <div className="mt-auto flex gap-2 pt-2 border-t border-border/40">
           <AddToCollectionButton productId={product.id} compact />
           <Link
             to="/product/$slug"
             params={{ slug: product.slug }}
-            className="flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-[11px] font-medium text-primary-foreground transition hover:bg-primary/90"
+            className="flex-1 flex items-center justify-center rounded bg-primary px-3 py-1.5 text-[10px] font-semibold text-primary-foreground hover:bg-primary/95 transition shadow-sm"
           >
             View
           </Link>
