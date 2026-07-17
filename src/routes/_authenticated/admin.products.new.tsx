@@ -100,6 +100,7 @@ function WizardPage() {
     const primary = uploadedPaths[0] ?? null;
     // Manual & Hybrid never fail on missing images; AI mode also survives — we
     // simply mark pending and let the pipeline (or manual publish) finish it.
+    const isManual = imageMode === "manual";
     const payload = {
       type_id,
       category_id,
@@ -114,14 +115,14 @@ function WizardPage() {
       price: Number(form.price) || 0,
       image_url: primary,
       image_mode: imageMode,
-      status: "draft",
-      processing_state: "pending",
+      status: isManual ? "published" : "draft",
+      processing_state: isManual ? "completed" : "pending",
       featured_homepage: form.featured_homepage,
       featured_feed: form.featured_feed,
       hidden: form.hidden,
       short_description: form.short_description.trim() || null,
       slug,
-      is_published: false,
+      is_published: isManual,
     };
     const { data, error } = await supabase.from("products").insert(payload as any).select("id").single();
     if (error) { setSaving(false); return toast.error(error.message); }
@@ -136,7 +137,7 @@ function WizardPage() {
       }));
       await supabase.from("product_assets").insert(rows as any);
     }
-    if (data?.id) {
+    if (data?.id && !isManual) {
       try {
         await enqueueAiPipeline(data.id);
         // Fire-and-forget execution so the wizard closes quickly.
@@ -148,7 +149,7 @@ function WizardPage() {
       }
     }
     setSaving(false);
-    toast.success("Product created & AI pipeline started");
+    toast.success(isManual ? "Product created & published" : "Product created & AI pipeline started");
     if (data?.id) navigate({ to: "/admin/products/$id", params: { id: data.id } });
   };
 
