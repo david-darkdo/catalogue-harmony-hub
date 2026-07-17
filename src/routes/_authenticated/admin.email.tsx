@@ -292,17 +292,17 @@ function CommunicationCenterPage() {
   return (
     <div className="container-app py-6 space-y-6">
       {/* Title Header */}
-      <div className="flex items-center justify-between border-b border-border pb-4">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between border-b border-border pb-4">
         <div>
           <h1 className="font-display text-2xl font-semibold text-foreground tracking-tight">Communication Operating System</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Manage multi-channel campaigns, templates, PWA push notifications, automations, and audience health.</p>
+          <p className="text-xs text-muted-foreground mt-0.5 max-w-prose">Manage multi-channel campaigns, templates, PWA push notifications, automations, and audience health.</p>
         </div>
-        <div className="flex bg-muted/80 p-0.5 rounded-lg border border-border">
+        <div className="flex bg-muted/80 p-1 rounded-lg border border-border overflow-x-auto max-w-full whitespace-nowrap scrollbar-none shrink-0 self-start lg:self-center">
           {(["dashboard", "campaigns", "automations", "templates", "queue", "diagnostics"] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => { setActiveTab(tab); setEditingCampaign(null); setEditingTemplate(null); }}
-              className={`rounded-md px-3 py-1.5 text-xs font-semibold capitalize transition ${
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold capitalize transition shrink-0 ${
                 activeTab === tab 
                   ? "bg-card text-foreground shadow-sm" 
                   : "text-muted-foreground hover:text-foreground"
@@ -313,6 +313,7 @@ function CommunicationCenterPage() {
           ))}
         </div>
       </div>
+
 
       {/* DASHBOARD TAB */}
       {activeTab === "dashboard" && (
@@ -680,7 +681,7 @@ function CommunicationCenterPage() {
               </button>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 mt-4">
               {templates.map((t) => (
                 <div key={t.id} className="rounded-lg border border-border p-3.5 bg-card text-xs space-y-2">
                   <div className="flex items-center justify-between font-semibold">
@@ -689,15 +690,15 @@ function CommunicationCenterPage() {
                         setEditingTemplate(t);
                         loadTemplateHistory(t.id);
                       }} 
-                      className="text-foreground hover:underline text-left text-sm"
+                      className="text-foreground hover:underline text-left text-sm font-semibold"
                     >
                       {t.name}
                     </button>
                   </div>
                   <p className="text-muted-foreground text-[11px]">{t.description}</p>
-                  <div className="flex gap-2">
-                    {t.variables?.map((v: string) => (
-                      <span key={v} className="font-mono bg-muted text-[10px] px-1 rounded text-muted-foreground">{{v}}</span>
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {t.variables?.map((v) => (
+                      <span key={v} className="font-mono bg-muted text-[10px] px-1.5 py-0.5 rounded text-muted-foreground">{"{{" + v + "}}"}</span>
                     ))}
                   </div>
                   <div className="flex gap-1.5 pt-2 border-t border-border mt-2">

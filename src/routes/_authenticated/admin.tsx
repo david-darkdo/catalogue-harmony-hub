@@ -3,7 +3,8 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
-import { Search, LayoutDashboard, Briefcase, Package, Layers, Users, FolderHeart, Mail, Activity, Sparkles, Wrench } from "lucide-react";
+import { Search, LayoutDashboard, Briefcase, Package, Layers, Users, FolderHeart, Mail, Activity, Sparkles, Wrench, Bell, X, AlertCircle, Trash2 } from "lucide-react";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Admin — Stoneworks" }] }),
@@ -11,11 +12,38 @@ export const Route = createFileRoute("/_authenticated/admin")({
 });
 
 function AdminLayout() {
-  const { loading, isAdmin } = useAuth();
+  const { loading, isAdmin, user } = useAuth();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [code, setCode] = useState("");
   const [searching, setSearching] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+
+  const loadNotifications = async () => {
+    if (!user?.id) return;
+    const { data } = await supabase
+      .from("communication_queue")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("channel_type", "push")
+      .order("created_at", { ascending: false })
+      .limit(10);
+    if (data) {
+      setNotifications(data);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.id && showNotifications) {
+      void loadNotifications();
+    }
+  }, [user?.id, showNotifications]);
+
+  const clearNotification = async (id: string) => {
+    await supabase.from("communication_queue").delete().eq("id", id);
+    void loadNotifications();
+  };
 
   const onSearchCode = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,7 +93,7 @@ function AdminLayout() {
 
   return (
     <div className="min-h-[60vh]">
-      <div className="sticky top-[57px] z-20 border-b border-border bg-background/95 backdrop-blur">
+      <div className="border-b border-border bg-background">
         <div className="container-app flex flex-wrap items-center gap-3 py-3">
           <div className="flex flex-wrap gap-1">
             {tabs.map((t) => (
@@ -83,7 +111,52 @@ function AdminLayout() {
               </Link>
             ))}
           </div>
-          <form onSubmit={onSearchCode} className="relative ml-auto flex min-w-[220px] flex-1 sm:max-w-xs">
+          <div className="relative ml-auto flex items-center gap-2">
+            {/* Admin Notifications Bell */}
+            {user && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="relative grid h-8 w-8 place-items-center rounded-full border border-border bg-card text-foreground transition hover:border-primary"
+                >
+                  <Bell className="h-3.5 w-3.5" />
+                  {notifications.filter(n => n.status === "PENDING").length > 0 && (
+                    <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-primary animate-pulse"></span>
+                  )}
+                </button>
+
+                {showNotifications && (
+                  <div className="absolute right-0 mt-2 w-80 rounded-lg border border-border bg-card shadow-xl p-4 text-xs space-y-3 z-50">
+                    <div className="flex items-center justify-between border-b border-border pb-2">
+                      <span className="font-semibold text-foreground">In-App Notifications</span>
+                      <button onClick={() => setShowNotifications(false)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+                    </div>
+
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                      {notifications.map((notif) => (
+                        <div key={notif.id} className="p-2 border border-border rounded bg-background flex gap-2 relative group text-left">
+                          <AlertCircle className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-foreground truncate">{notif.subject || "Alert"}</div>
+                            <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{notif.body}</p>
+                          </div>
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); clearNotification(notif.id); }}
+                            className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                      {notifications.length === 0 && (
+                        <div className="text-muted-foreground italic text-center py-4">No notifications yet.</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            <form onSubmit={onSearchCode} className="relative flex min-w-[200px] flex-1 sm:max-w-xs">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <input
               value={code}
@@ -98,6 +171,7 @@ function AdminLayout() {
               {searching ? "…" : "Open"}
             </button>
           </form>
+        </div>
         </div>
       </div>
       <Outlet />

@@ -1,6 +1,6 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Home, Search, Compass, Bookmark, User, LogOut, Shield } from "lucide-react";
-import { useState } from "react";
+import { Home, Search, Compass, Bookmark, User, LogOut, Shield, Bell, X, AlertCircle, Trash2 } from "lucide-react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { FloatingWhatsApp } from "./FloatingWhatsApp";
@@ -23,6 +23,33 @@ function TopBar() {
   const search = useRouterState({ select: (s) => s.location.search as { q?: string } });
   const { user, isAdmin } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+
+  const loadNotifications = async () => {
+    if (!user?.id) return;
+    const { data } = await supabase
+      .from("communication_queue")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("channel_type", "push")
+      .order("created_at", { ascending: false })
+      .limit(10);
+    if (data) {
+      setNotifications(data);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.id && showNotifications) {
+      void loadNotifications();
+    }
+  }, [user?.id, showNotifications]);
+
+  const clearNotification = async (id: string) => {
+    await supabase.from("communication_queue").delete().eq("id", id);
+    void loadNotifications();
+  };
 
   const signOut = async () => {
     await supabase.auth.signOut();
@@ -58,14 +85,67 @@ function TopBar() {
             className="w-full rounded-full border border-border bg-surface py-2 pl-9 pr-4 text-sm outline-none transition focus:border-primary focus:bg-card"
           />
         </form>
-        <div className="relative">
-          <button
-            onClick={() => setMenuOpen((o) => !o)}
-            aria-label="Account menu"
-            className="grid h-9 w-9 place-items-center rounded-full border border-border bg-card hover:border-primary"
-          >
-            <User className="h-4 w-4" />
-          </button>
+        <div className="flex items-center gap-2">
+          {/* Notification Bell */}
+          {user && (
+            <div className="relative">
+              <button
+                onClick={() => {
+                  setShowNotifications(!showNotifications);
+                  setMenuOpen(false);
+                }}
+                className="relative grid h-9 w-9 place-items-center rounded-full border border-border bg-card text-foreground transition hover:border-primary"
+              >
+                <Bell className="h-4 w-4" />
+                {notifications.filter(n => n.status === "PENDING").length > 0 && (
+                  <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary animate-pulse"></span>
+                )}
+              </button>
+
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-80 rounded-lg border border-border bg-card shadow-xl p-4 text-xs space-y-3 z-50">
+                  <div className="flex items-center justify-between border-b border-border pb-2">
+                    <span className="font-semibold text-foreground">In-App Notifications</span>
+                    <button onClick={() => setShowNotifications(false)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
+                  </div>
+
+                  <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                    {notifications.map((notif) => (
+                      <div key={notif.id} className="p-2 border border-border rounded bg-background flex gap-2 relative group">
+                        <AlertCircle className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-foreground truncate">{notif.subject || "Alert"}</div>
+                          <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{notif.body}</p>
+                        </div>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); clearNotification(notif.id); }}
+                          className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                    {notifications.length === 0 && (
+                      <div className="text-muted-foreground italic text-center py-4">No notifications yet.</div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Account Menu */}
+          <div className="relative">
+            <button
+              onClick={() => {
+                setMenuOpen((o) => !o);
+                setShowNotifications(false);
+              }}
+              aria-label="Account menu"
+              className="grid h-9 w-9 place-items-center rounded-full border border-border bg-card hover:border-primary"
+            >
+              <User className="h-4 w-4" />
+            </button>
           {menuOpen && (
             <div className="absolute right-0 mt-2 w-48 overflow-hidden rounded-md border border-border bg-card shadow-lg">
               {user ? (
@@ -86,6 +166,7 @@ function TopBar() {
               )}
             </div>
           )}
+          </div>
         </div>
       </div>
     </header>

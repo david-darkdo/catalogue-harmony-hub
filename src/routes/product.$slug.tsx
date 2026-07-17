@@ -29,8 +29,8 @@ const relatedQuery = (familyId: string | null, excludeId: string) =>
   });
 
 export const Route = createFileRoute("/product/$slug")({
-  loader: async ({ context, params, request }) => {
-    const origin = new URL(request.url).origin;
+  loader: async ({ context, params }) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://showroom.enreach.concepts';
     const product = await context.queryClient.ensureQueryData(productQuery(params.slug));
     context.queryClient.ensureQueryData(relatedQuery(product.family_id, product.id));
 
