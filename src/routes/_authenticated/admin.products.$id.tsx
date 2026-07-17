@@ -176,18 +176,156 @@ function EditPage() {
           </select>
           <p className="text-xs text-muted-foreground">Change and save, then Regenerate to apply.</p>
         </section>
+        {/* Discovery Readiness Score Card */}
+        <section className="rounded-xl border border-border bg-card p-5 space-y-3">
+          <h2 className="font-display font-semibold flex items-center gap-2">
+            <Activity className="h-4 w-4 text-primary" /> Discovery Readiness
+          </h2>
+          {(() => {
+            const { score, missing } = getReadiness(p, assets);
+            return (
+              <>
+                <div className="flex items-center gap-3">
+                  <div className="relative flex h-14 w-14 items-center justify-center rounded-full border-4 border-primary/20 bg-primary/5">
+                    <span className="text-sm font-bold font-mono text-primary">{score}%</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">
+                      {score >= 90 ? "Excellent" : score >= 75 ? "Good" : score >= 50 ? "Needs Work" : "Incomplete"}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">Technical SEO & indexing check</p>
+                  </div>
+                </div>
+                {missing.length > 0 ? (
+                  <div className="space-y-1 border-t border-border/60 pt-2 text-[11px]">
+                    <span className="font-semibold text-amber-600">Pending Actions:</span>
+                    <ul className="list-disc pl-4 space-y-0.5 text-muted-foreground">
+                      {missing.map((m, i) => (
+                        <li key={i}>{m}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-green-600 font-medium pt-1">
+                    ✓ All discovery settings are complete and optimized!
+                  </p>
+                )}
+              </>
+            );
+          })()}
+        </section>
 
 
-        {/* SEO */}
+        {/* SEO & Search Management */}
         <section className="rounded-xl border border-border bg-card p-5 space-y-3 md:col-span-2">
-          <h2 className="font-display font-semibold">SEO & Search</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <F label="SEO Title"><input value={p.seo_title ?? ""} onChange={(e) => set("seo_title", e.target.value)} className={inp} /></F>
-            <F label="Canonical Slug"><input value={p.canonical_slug ?? p.slug ?? ""} onChange={(e) => set("canonical_slug", e.target.value)} className={inp} /></F>
-            <F label="SEO Description" wide><textarea value={p.seo_description ?? ""} onChange={(e) => set("seo_description", e.target.value)} className={`${inp} min-h-[60px]`} /></F>
-            <F label="SEO Keywords (comma-separated)"><input value={arrToStr(p.seo_keywords)} onChange={(e) => set("seo_keywords", strToArr(e.target.value))} className={inp} /></F>
-            <F label="App Search Keywords (internal)"><input value={arrToStr(p.app_search_keywords ?? p.app_keywords)} onChange={(e) => set("app_search_keywords", strToArr(e.target.value))} className={inp} /></F>
-            <F label="Alt Text"><input value={p.alt_text ?? ""} onChange={(e) => set("alt_text", e.target.value)} className={inp} /></F>
+          <h2 className="font-display font-semibold">SEO, Search & Image Assets Metadata</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1">
+              <F label="SEO Title">
+                <input
+                  value={p.seo_title ?? ""}
+                  onChange={(e) => {
+                    set("seo_title", e.target.value);
+                    set("seo_title_manual", true);
+                  }}
+                  className={inp}
+                />
+              </F>
+              <Chk
+                label="Override AI title updates"
+                checked={!!p.seo_title_manual}
+                onChange={(v) => set("seo_title_manual", v)}
+              />
+            </div>
+            
+            <F label="Canonical Slug">
+              <input
+                value={p.canonical_slug ?? p.slug ?? ""}
+                onChange={(e) => set("canonical_slug", e.target.value)}
+                className={inp}
+              />
+            </F>
+            
+            <div className="space-y-1 sm:col-span-2">
+              <F label="SEO Description">
+                <textarea
+                  value={p.seo_description ?? ""}
+                  onChange={(e) => {
+                    set("seo_description", e.target.value);
+                    set("seo_description_manual", true);
+                  }}
+                  className={`${inp} min-h-[60px]`}
+                />
+              </F>
+              <Chk
+                label="Override AI description updates"
+                checked={!!p.seo_description_manual}
+                onChange={(v) => set("seo_description_manual", v)}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <F label="SEO Keywords (comma-separated)">
+                <input
+                  value={arrToStr(p.seo_keywords)}
+                  onChange={(e) => {
+                    set("seo_keywords", strToArr(e.target.value));
+                    set("seo_keywords_manual", true);
+                  }}
+                  className={inp}
+                />
+              </F>
+              <Chk
+                label="Override AI keywords updates"
+                checked={!!p.seo_keywords_manual}
+                onChange={(v) => set("seo_keywords_manual", v)}
+              />
+            </div>
+
+            <F label="App Search Keywords (internal)">
+              <input
+                value={arrToStr(p.app_search_keywords ?? p.app_keywords)}
+                onChange={(e) => set("app_search_keywords", strToArr(e.target.value))}
+                className={inp}
+              />
+            </F>
+
+            <div className="border-t border-border/40 sm:col-span-2 pt-3 my-1">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                Image SEO Settings
+              </h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <F label="Image Alt Text">
+                  <input
+                    value={p.alt_text ?? ""}
+                    onChange={(e) => set("alt_text", e.target.value)}
+                    className={inp}
+                  />
+                </F>
+                <F label="Image Title">
+                  <input
+                    value={p.image_title ?? ""}
+                    onChange={(e) => set("image_title", e.target.value)}
+                    className={inp}
+                  />
+                </F>
+                <F label="Image Caption">
+                  <input
+                    value={p.image_caption ?? ""}
+                    onChange={(e) => set("image_caption", e.target.value)}
+                    className={inp}
+                  />
+                </F>
+                <F label="SEO Image Filename">
+                  <input
+                    value={p.image_filename ?? ""}
+                    onChange={(e) => set("image_filename", e.target.value)}
+                    className={inp}
+                    placeholder="e.g. virony-white-polished-tile"
+                  />
+                </F>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -382,6 +520,23 @@ function AssetManager({
       })}
     </div>
   );
+}
+
+function getReadiness(p: any, assets: any[]) {
+  const checks = [
+    { name: "Product Name", ok: !!p.name, points: 10, msg: "Add a product name" },
+    { name: "Description", ok: !!(p.short_description || p.generated_description), points: 20, msg: "Add a short description or run AI" },
+    { name: "Primary Image", ok: !!(p.image_url || assets.some(a => a.is_primary)), points: 20, msg: "Upload at least one primary product image" },
+    { name: "SEO Title", ok: !!p.seo_title, points: 10, msg: "Enter an SEO Title or generate with AI" },
+    { name: "SEO Description", ok: !!p.seo_description, points: 10, msg: "Enter an SEO Description or generate with AI" },
+    { name: "Structured Data", ok: !!(p.structured_data || p.faq), points: 10, msg: "FAQ/Structured data generated or added" },
+    { name: "Canonical URL / Slug", ok: !!(p.canonical_slug || p.slug), points: 10, msg: "Define a slug or canonical slug" },
+    { name: "Taxonomy & Pricing", ok: !!(p.type_id && p.category_id && Number(p.price) > 0), points: 5, msg: "Choose Type/Category & price > 0" },
+    { name: "Product Code", ok: !!p.code, points: 5, msg: "Enter a unique product code" },
+  ];
+  const score = checks.reduce((acc, c) => acc + (c.ok ? c.points : 0), 0);
+  const missing = checks.filter(c => !c.ok).map(c => c.msg);
+  return { score, missing };
 }
 
 

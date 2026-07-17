@@ -362,11 +362,21 @@ export const runProductPipeline = createServerFn({ method: "POST" })
             prompt,
             "You are an SEO engineer. Output strict JSON."
           ) ?? {};
-          await supabase.from("products").update({
-            seo_title: seo.seo_title ?? product.name,
-            seo_description: seo.seo_description ?? product.short_description,
-            seo_keywords: seo.seo_keywords ?? [],
-          } as any).eq("id", productId);
+          
+          const seoPayload: any = {};
+          if (!product.seo_title_manual) {
+            seoPayload.seo_title = seo.seo_title ?? product.name;
+          }
+          if (!product.seo_description_manual) {
+            seoPayload.seo_description = seo.seo_description ?? product.short_description;
+          }
+          if (!product.seo_keywords_manual) {
+            seoPayload.seo_keywords = seo.seo_keywords ?? [];
+          }
+          
+          if (Object.keys(seoPayload).length > 0) {
+            await supabase.from("products").update(seoPayload).eq("id", productId);
+          }
           Object.assign(result, seo);
         } else if (jt === "faq_generation") {
           const rawPrompt = resolvedTemplates.faq_prompt;
@@ -776,3 +786,90 @@ export const updateAISettings = createServerFn({ method: "POST" })
     if (error) throw error;
     return { ok: true };
   });
+
+export const getDiscoveryHealthDetails = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase } = context;
+
+    // 1. Audit duplicate slugs
+    const { data: allSlugs } = await supabase
+      .from("products")
+      .select("slug")
+      .is("deleted_at", null);
+    const slugCounts = new Map<string, number>();
+    allSlugs?.forEach((p) => {
+      if (p.slug) slugCounts.set(p.slug, (slugCounts.get(p.slug) ?? 0) + 1);
+    });
+    let duplicateSlugsCount = 0;
+    slugCounts.forEach((c) => {
+      if (c > 1) duplicateSlugsCount++;
+    });
+
+    // 2. Audit missing metadata
+    const { count: missingMetaCount } = await supabase
+      .from("products")
+      .select("*", { count: "exact", head: true })
+      .is("deleted_at", null)
+      .or("seo_title.is.null,seo_description.is.null");
+
+    // 3. Audit missing images
+    const { count: missingImagesCount } = await supabase
+      .from("products")
+      .select("*", { count: "exact", head: true })
+      .is("deleted_at", null)
+      .is("image_url", null);
+
+    // 4. Audit search index sync
+    const { count: totalProducts } = await supabase
+      .from("products")
+      .select("*", { count: "exact", head: true })
+      .is("deleted_at", null);
+
+    const { count: totalSearchIndex } = await supabase
+      .from("search_index")
+      .select("*", { count: "exact", head: true });
+
+    // 5. Taxonomy counts
+    const { count: countTypes } = await supabase.from("product_types").select("*", { count: "exact", head: true });
+    const { count: countCats } = await supabase.from("categories").select("*", { count: "exact", head: true });
+    const { count: countSubs } = await supabase.from("subcategories").select("*", { count: "exact", head: true });
+    const { count: countFams } = await supabase.from("family_groups").select("*", { count: "exact", head: true });
+
+    // 6. Redirects count
+    const { count: totalRedirects } = await supabase.from("redirects").select("*", { count: "exact", head: true });
+
+    return {
+      duplicateSlugsCount: duplicateSlugsCount || 0,
+      missingMetaCount: missingMetaCount || 0,
+      missingImagesCount: missingImagesCount || 0,
+      totalProducts: totalProducts || 0,
+      totalSearchIndex: totalSearchIndex || 0,
+      totalRedirects: totalRedirects || 0,
+      taxonomy: {
+        types: countTypes || 0,
+        categories: countCats || 0,
+        subcategories: countSubs || 0,
+        families: countFams || 0,
+      },
+      lastGeneratedTimestamp: new Date().toISOString(),
+    };
+  });
+
+export const rebuildAllSearchIndexes = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase } = context;
+    const { data: products } = await supabase
+      .from("products")
+      .select("id")
+      .is("deleted_at", null);
+
+    if (products) {
+      for (const p of products) {
+        await supabase.rpc("rebuild_search_index" as any, { _product_id: p.id } as any);
+      }
+    }
+    return { ok: true, count: products?.length || 0 };
+  });
+

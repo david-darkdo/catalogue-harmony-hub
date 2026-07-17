@@ -78,40 +78,61 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   );
 }
 
+import { fetchAppSettings } from "@/lib/settings";
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
+  loader: async () => {
+    try {
+      const settings = await fetchAppSettings();
+      return { settings };
+    } catch {
+      return { settings: null };
+    }
+  },
+  head: ({ loaderData }) => {
+    const settings = loaderData?.settings;
+    const googleVerify = settings?.google_site_verification;
+    const bingVerify = settings?.bing_site_verification;
+
+    const meta = [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { name: "theme-color", content: "#2f5240" },
-      { title: "Stoneworks — Luxury Building Materials" },
+      { title: "Enreach Concepts — Luxury Building Materials Showroom" },
       {
         name: "description",
-        content:
-          "Discover luxury tiles, doors, plumbing and finishes. Curated building materials for architects, designers and discerning homeowners.",
+        content: "Discover luxury tiles, security doors, plumbing, lighting and custom finishes. Curated premium building materials at Enreach Concepts Abuja.",
       },
-      { property: "og:title", content: "Stoneworks — Luxury Building Materials" },
+      { property: "og:title", content: "Enreach Concepts — Luxury Building Materials Showroom" },
       {
         property: "og:description",
-        content:
-          "A curated catalogue of premium tiles, doors and finishes — built for serious projects.",
+        content: "A curated catalogue of premium tiles, doors and finishes — built for professional builders and custom residential developments.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Stoneworks — Luxury Building Materials" },
-      { name: "description", content: "Foundation Schema initializes a Supabase/PostgreSQL database for product catalog management and user interactions." },
-      { property: "og:description", content: "Foundation Schema initializes a Supabase/PostgreSQL database for product catalog management and user interactions." },
-      { name: "twitter:description", content: "Foundation Schema initializes a Supabase/PostgreSQL database for product catalog management and user interactions." },
+      { name: "twitter:title", content: "Enreach Concepts — Luxury Building Materials Showroom" },
+      { name: "twitter:description", content: "A curated catalogue of premium tiles, doors and finishes — built for professional builders." },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/0ba69082-2120-4fe0-8bd9-30559a2bcb96/id-preview-5c7dab40--90df874f-a60f-4339-93a0-e225dd750696.lovable.app-1782681475617.png" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/0ba69082-2120-4fe0-8bd9-30559a2bcb96/id-preview-5c7dab40--90df874f-a60f-4339-93a0-e225dd750696.lovable.app-1782681475617.png" },
-    ],
-    links: [
-      { rel: "stylesheet", href: appCss },
-      { rel: "manifest", href: "/manifest.webmanifest" },
-      { rel: "apple-touch-icon", href: "/icon-512.png" },
-      { rel: "icon", href: "/icon-512.png", type: "image/png" },
-    ],
-  }),
+    ];
+
+    if (googleVerify) {
+      meta.push({ name: "google-site-verification", content: googleVerify });
+    }
+    if (bingVerify) {
+      meta.push({ name: "msvalidate.01", content: bingVerify });
+    }
+
+    return {
+      meta,
+      links: [
+        { rel: "stylesheet", href: appCss },
+        { rel: "manifest", href: "/manifest.webmanifest" },
+        { rel: "apple-touch-icon", href: "/icon-512.png" },
+        { rel: "icon", href: "/icon-512.png", type: "image/png" },
+      ],
+    };
+  },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,

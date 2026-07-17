@@ -25,17 +25,37 @@ const relatedQuery = (familyId: string | null, excludeId: string) =>
   });
 
 export const Route = createFileRoute("/product/$slug")({
-  loader: async ({ context, params }) => {
+  loader: async ({ context, params, request }) => {
+    const origin = new URL(request.url).origin;
     const product = await context.queryClient.ensureQueryData(productQuery(params.slug));
     context.queryClient.ensureQueryData(relatedQuery(product.family_id, product.id));
-    return { product };
+
+    // Fetch taxonomy parents
+    const [typeRes, categoryRes, subcategoryRes, familyRes] = await Promise.all([
+      product.type_id ? supabase.from("product_types").select("name, slug").eq("id", product.type_id).maybeSingle() : Promise.resolve({ data: null }),
+      product.category_id ? supabase.from("categories").select("name, slug").eq("id", product.category_id).maybeSingle() : Promise.resolve({ data: null }),
+      product.subcategory_id ? supabase.from("subcategories").select("name, slug").eq("id", product.subcategory_id).maybeSingle() : Promise.resolve({ data: null }),
+      product.family_id ? supabase.from("family_groups").select("name, slug").eq("id", product.family_id).maybeSingle() : Promise.resolve({ data: null }),
+    ]);
+
+    return {
+      product,
+      origin,
+      taxonomy: {
+        type: typeRes.data,
+        category: categoryRes.data,
+        subcategory: subcategoryRes.data,
+        family: familyRes.data,
+      }
+    };
   },
   head: ({ loaderData }) => {
     const product = loaderData?.product;
-    const title = product?.seo_title || `${product?.name || "Product"} — Stoneworks`;
+    const origin = loaderData?.origin || "https://showroom.enreach.concepts";
+    const title = product?.seo_title || `${product?.name || "Product"} — Enreach Concepts`;
     const desc = product?.seo_description || product?.short_description || "Premium building material details.";
     const imageUrl = product?.generated_studio_image || product?.image_url || "";
-    const canonical = `https://showroom.enreach.concepts/product/${product?.slug || ""}`;
+    const canonical = `${origin}/product/${product?.slug || ""}`;
 
     return {
       meta: [
@@ -76,13 +96,43 @@ export const Route = createFileRoute("/product/$slug")({
 
 function ProductPage() {
   const { slug } = Route.useParams();
-  const { data: product } = useSuspenseQuery(productQuery(slug));
+  const { product, origin, taxonomy } = Route.useLoaderData();
   const { data: related = [] } = useSuspenseQuery(
     relatedQuery(product.family_id, product.id),
   );
 
   const studio = publicImageUrl(product.generated_studio_image) || publicImageUrl(product.image_url);
   const installed = publicImageUrl(product.generated_installed_image) || publicImageUrl(product.image_url);
+
+  // Build breadcrumbs paths
+  const breadcrumbs = [
+    { label: "Home", path: "/" }
+  ];
+  if (taxonomy.type) {
+    breadcrumbs.push({ label: taxonomy.type.name, path: `/${taxonomy.type.slug}` });
+    if (taxonomy.category) {
+      breadcrumbs.push({ label: taxonomy.category.name, path: `/${taxonomy.type.slug}/${taxonomy.category.slug}` });
+      if (taxonomy.subcategory) {
+        breadcrumbs.push({ label: taxonomy.subcategory.name, path: `/${taxonomy.type.slug}/${taxonomy.category.slug}/${taxonomy.subcategory.slug}` });
+        if (taxonomy.family) {
+          breadcrumbs.push({ label: taxonomy.family.name, path: `/${taxonomy.type.slug}/${taxonomy.category.slug}/${taxonomy.subcategory.slug}/${taxonomy.family.slug}` });
+        }
+      }
+    }
+  }
+  breadcrumbs.push({ label: product.name, path: `/product/${product.slug}` });
+
+  // Schema BreadcrumbList
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": breadcrumbs.map((b, i) => ({
+      "@type": "ListItem",
+      "position": i + 1,
+      "name": b.label,
+      "item": b.path.startsWith("/") ? `${origin}${b.path}` : b.path
+    }))
+  };
 
   const productSchema = {
     "@context": "https://schema.org",
@@ -94,11 +144,11 @@ function ProductPage() {
     "mpn": product.code,
     "brand": {
       "@type": "Brand",
-      "name": product.brand || "Stoneworks"
+      "name": product.brand || "Enreach Concepts"
     },
     "offers": {
       "@type": "Offer",
-      "url": `https://showroom.enreach.concepts/product/${product.slug}`,
+      "url": `${origin}/product/${product.slug}`,
       "priceCurrency": "USD",
       "price": product.price,
       "availability": "https://schema.org/InStock",
@@ -111,6 +161,10 @@ function ProductPage() {
       {/* Structured Data JSON-LD Injections */}
       <script
         type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
+      />
+      <script
+        type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }}
       />
       {product.structured_data && (
@@ -120,12 +174,22 @@ function ProductPage() {
         />
       )}
       <div className="container-app pt-2">
-        <Link
-          to="/"
-          className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" /> Back
-        </Link>
+        {/* Visual Breadcrumb navigation */}
+        <nav className="flex items-center gap-1.5 overflow-x-auto pb-3 text-[10px] uppercase tracking-wider text-muted-foreground">
+          {breadcrumbs.map((b, index) => (
+            <span key={index} className="flex items-center gap-1.5 shrink-0">
+              {index > 0 && <span className="text-muted-foreground/40">/</span>}
+              {index === breadcrumbs.length - 1 ? (
+                <span className="font-semibold text-foreground">{b.label}</span>
+              ) : (
+                <Link to={b.path} className="hover:text-primary transition">
+                  {b.label}
+                </Link>
+              )}
+            </span>
+          ))}
+        </nav>
+
 
         <div className="mt-3 grid gap-4 md:grid-cols-2">
           <div className="overflow-hidden rounded-2xl border border-border bg-muted">
@@ -150,7 +214,7 @@ function ProductPage() {
 
         <div className="mt-6">
           <p className="text-xs uppercase tracking-[0.18em] text-accent">
-            {product.brand ?? "Stoneworks"} · Code {product.code}
+            {product.brand ?? "Enreach Concepts"} · Code {product.code}
           </p>
           <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight">
             {product.name}

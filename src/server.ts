@@ -2,6 +2,7 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
+import { supabase } from "./integrations/supabase/client";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -40,8 +41,46 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      const urlObj = new URL(request.url);
+
+      // 1. Check for redirects
+      try {
+        const { data: redir } = await supabase
+          .from("redirects")
+          .select("new_path, status_code")
+          .eq("old_path", urlObj.pathname)
+          .maybeSingle();
+        if (redir) {
+          return Response.redirect(urlObj.origin + redir.new_path, redir.status_code || 301);
+        }
+      } catch (err) {
+        console.error("Redirect lookup failed:", err);
+      }
+
+      // 2. Intercept robots.txt
+      if (urlObj.pathname === "/robots.txt") {
+        const robotsTxt = `User-agent: *
+Allow: /
+
+Sitemap: ${urlObj.origin}/sitemap.xml
+`;
+        return new Response(robotsTxt, {
+          headers: {
+            "Content-Type": "text/plain",
+            "Cache-Control": "public, max-age=3600, s-maxage=18000",
+          },
+        });
+      }
+
+      // 3. Rewrite sitemap.xml to sitemap/xml
+      let req = request;
+      if (urlObj.pathname === "/sitemap.xml") {
+        urlObj.pathname = "/sitemap/xml";
+        req = new Request(urlObj.toString(), request);
+      }
+
       const handler = await getServerEntry();
-      const response = await handler.fetch(request, env, ctx);
+      const response = await handler.fetch(req, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
       console.error(error);
@@ -52,3 +91,4 @@ export default {
     }
   },
 };
+

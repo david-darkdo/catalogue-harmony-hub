@@ -21,6 +21,8 @@ const FIELDS: [string, string, string?][] = [
   ["facebook_url", "Facebook URL"],
   ["instagram_url", "Instagram URL"],
   ["tiktok_url", "TikTok URL"],
+  ["google_site_verification", "Google Site Verification", "Paste the Google Search Console meta tag content code"],
+  ["bing_site_verification", "Bing Site Verification", "Paste the Bing Webmaster tools xml/meta verification code"],
 ];
 
 function SettingsPage() {
