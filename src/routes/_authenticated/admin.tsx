@@ -59,7 +59,7 @@ function AdminLayout() {
     { to: "/admin/diagnostics" as const, label: "Diagnostics", icon: Wrench, active: pathname.startsWith("/admin/diagnostics") },
     { to: "/admin/customers" as const, label: "Customers", icon: Users, active: pathname.startsWith("/admin/customers") },
     { to: "/admin/collections" as const, label: "Collections", icon: FolderHeart, active: pathname.startsWith("/admin/collections") },
-    { to: "/admin/email" as const, label: "Email", icon: Mail, active: pathname.startsWith("/admin/email") },
+    { to: "/admin/email" as const, label: "Communication Center", icon: Mail, active: pathname.startsWith("/admin/email") },
     { to: "/admin/business" as const, label: "Business", icon: Briefcase, active: pathname.startsWith("/admin/business") },
   ];
 

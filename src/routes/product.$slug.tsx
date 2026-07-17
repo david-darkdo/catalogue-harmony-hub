@@ -3,9 +3,13 @@ import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
 import { ProductCard } from "@/components/ProductCard";
 import { fetchProductBySlug, fetchRelatedProducts } from "@/lib/catalog";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Heart, ShoppingBag } from "lucide-react";
 import { AddToCollectionButton } from "@/components/AddToCollectionButton";
 import { publicImageUrl } from "@/components/ImageUploader";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const productQuery = (slug: string) =>
   queryOptions({
@@ -100,6 +104,74 @@ function ProductPage() {
   const { data: related = [] } = useSuspenseQuery(
     relatedQuery(product.family_id, product.id),
   );
+
+  const { user } = useAuth();
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!product?.id) return;
+
+    // Track viewed event in activity timeline
+    if (user?.id) {
+      const trackEvent = async () => {
+        await supabase.from("customer_activity").insert({
+          user_id: user.id,
+          activity_type: "product_viewed",
+          metadata: { productId: product.id, name: product.name, category: product.category || "Uncategorized" }
+        });
+      };
+      void trackEvent();
+
+      // Check favorite status
+      supabase.from("favorites")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("product_id", product.id)
+        .maybeSingle()
+        .then(({ data }) => setIsFavorite(!!data));
+    }
+
+    // Load recommendations
+    const loadRecs = async () => {
+      const { data } = await supabase
+        .from("products")
+        .select("*")
+        .eq("publish_status", "published")
+        .neq("id", product.id)
+        .limit(4);
+      setRecommendations(data || []);
+    };
+    void loadRecs();
+  }, [product?.id, user?.id]);
+
+  const toggleFavorite = async () => {
+    if (!user?.id) {
+      toast.error("Please sign in to save favorites");
+      return;
+    }
+    try {
+      if (isFavorite) {
+        const { error } = await supabase.from("favorites").delete().eq("user_id", user.id).eq("product_id", product.id);
+        if (error) throw error;
+        setIsFavorite(false);
+        toast.success("Removed from favorites");
+      } else {
+        const { error } = await supabase.from("favorites").insert({ user_id: user.id, product_id: product.id });
+        if (error) throw error;
+        setIsFavorite(true);
+        toast.success("Saved to favorites");
+        // Log event to bus
+        await supabase.from("customer_activity").insert({
+          user_id: user.id,
+          activity_type: "favorites_changed",
+          metadata: { productId: product.id, name: product.name, action: "added" }
+        });
+      }
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
 
   const studio = publicImageUrl(product.generated_studio_image) || publicImageUrl(product.image_url);
   const installed = publicImageUrl(product.generated_installed_image) || publicImageUrl(product.image_url);
@@ -255,6 +327,17 @@ function ProductPage() {
               productId={product.id}
               className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
             />
+            <button 
+              onClick={toggleFavorite}
+              className={`rounded-lg px-4 py-3 border transition flex items-center justify-center gap-2 ${
+                isFavorite 
+                  ? "bg-red-500/10 border-red-500/20 text-red-500 hover:bg-red-500/25" 
+                  : "border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+              }`}
+            >
+              <Heart className={`h-4 w-4 ${isFavorite ? "fill-red-500" : ""}`} />
+              {isFavorite ? "Saved" : "Favorite"}
+            </button>
           </div>
         </div>
 
@@ -266,6 +349,19 @@ function ProductPage() {
             <p className="font-display text-xl font-semibold">Related products</p>
             <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {related.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          </section>
+        )}
+        {recommendations.length > 0 && (
+          <section className="mt-12 pt-6 border-t border-border">
+            <h2 className="font-display text-xs uppercase tracking-[0.18em] text-accent">
+              Tailored for your design style
+            </h2>
+            <p className="font-display text-xl font-semibold">Recommended for you</p>
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {recommendations.map((p) => (
                 <ProductCard key={p.id} product={p} />
               ))}
             </div>
