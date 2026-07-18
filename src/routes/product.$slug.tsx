@@ -165,12 +165,19 @@ function ProductPage() {
       void trackEvent();
 
       // Check favorite status
-      supabase.from("favorites")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("product_id", product.id)
+      supabase.from("profiles")
+        .select("id")
+        .eq("auth_id", user.id)
         .maybeSingle()
-        .then(({ data }) => setIsFavorite(!!data));
+        .then(({ data: profile }) => {
+          if (!profile?.id) return;
+          supabase.from("favorites")
+            .select("*")
+            .eq("user_id", profile.id)
+            .eq("product_id", product.id)
+            .maybeSingle()
+            .then(({ data }) => setIsFavorite(!!data));
+        });
     }
 
     // Load recommendations
@@ -192,13 +199,20 @@ function ProductPage() {
       return;
     }
     try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("auth_id", user.id)
+        .maybeSingle();
+      if (!profile?.id) throw new Error("User profile not found");
+
       if (isFavorite) {
-        const { error } = await supabase.from("favorites").delete().eq("user_id", user.id).eq("product_id", product.id);
+        const { error } = await supabase.from("favorites").delete().eq("user_id", profile.id).eq("product_id", product.id);
         if (error) throw error;
         setIsFavorite(false);
         toast.success("Removed from favorites");
       } else {
-        const { error } = await supabase.from("favorites").insert({ user_id: user.id, product_id: product.id });
+        const { error } = await supabase.from("favorites").insert({ user_id: profile.id, product_id: product.id });
         if (error) throw error;
         setIsFavorite(true);
         toast.success("Saved to favorites");
@@ -367,7 +381,7 @@ function ProductPage() {
               {product.name}
             </h1>
             <p className="mt-1.5 font-display text-2xl font-bold text-primary">
-              ${Number(product.price).toFixed(2)}
+              ₦${Number(product.price).toLocaleString()}
               <span className="ml-1 text-sm font-normal text-muted-foreground">/sqm</span>
             </p>
           </div>
@@ -408,7 +422,7 @@ function ProductPage() {
                   : "border-border text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
             >
-              <Heart className={`h-4 w-4 ${isFavorite ? "fill-red-500 text-red-500" : ""}`} />
+              <Heart className={`h-4 w-4 text-red-500 hover:text-red-600 ${isFavorite ? "fill-red-500" : ""}`} />
               {isFavorite ? "Saved" : "Favorite"}
             </button>
           </div>

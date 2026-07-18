@@ -65,10 +65,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <TopBar />
       <main className="flex-1 pb-28 md:pb-16">{children}</main>
 
-      {/* Fixed Persistent Trust Information Strip */}
+      {/* Seamless Scrolling Marquee Trust Ticker Belt */}
       {trustFeatures.length > 0 && (
-        <section className="fixed bottom-12 md:bottom-0 left-0 right-0 z-20 border-t border-border bg-background/95 py-2.5 shadow-md md:py-3.5 backdrop-blur">
-          <div className="container-app grid grid-cols-2 gap-3 md:grid-cols-4">
+        <section className="fixed bottom-12 md:bottom-0 left-0 right-0 z-20 border-t border-border bg-background/95 py-2 shadow-md overflow-hidden backdrop-blur select-none">
+          <style>{`
+            @keyframes marquee {
+              0% { transform: translateX(0); }
+              100% { transform: translateX(-50%); }
+            }
+            .animate-marquee {
+              display: flex;
+              width: max-content;
+              animation: marquee 30s linear infinite;
+            }
+          `}</style>
+          
+          <div className="animate-marquee flex items-center gap-16 px-4">
+            {/* First Set */}
             {trustFeatures.map((t) => {
               const IconComponent =
                 t.icon_name === "Shield" ? Shield :
@@ -76,13 +89,35 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 t.icon_name === "CreditCard" ? CreditCard :
                 t.icon_name === "Headphones" ? Headphones : HelpCircle;
               return (
-                <div key={t.id} className="flex gap-2 items-center justify-center transition-transform hover:scale-102">
-                  <div className="rounded-full bg-primary/15 p-1 text-primary shrink-0 animate-pulse">
+                <div key={`${t.id}-1`} className="flex gap-2 items-center shrink-0">
+                  <div className="rounded-full bg-primary/10 p-1 text-primary shrink-0 animate-pulse">
                     <IconComponent className="h-3.5 w-3.5" />
                   </div>
-                  <div className="min-w-0">
-                    <h4 className="font-bold text-[10px] text-foreground tracking-tight leading-tight">{t.title}</h4>
-                    <p className="text-[8px] text-muted-foreground leading-none mt-0.5">{t.description}</p>
+                  <div className="min-w-0 flex items-baseline gap-1.5">
+                    <h4 className="font-bold text-[10px] text-foreground tracking-tight whitespace-nowrap">{t.title}</h4>
+                    <span className="text-[10px] text-muted-foreground/30 font-bold font-mono">|</span>
+                    <p className="text-[9px] text-muted-foreground whitespace-nowrap">{t.description}</p>
+                  </div>
+                </div>
+              );
+            })}
+            
+            {/* Duplicated Second Set for Seamless Loop */}
+            {trustFeatures.map((t) => {
+              const IconComponent =
+                t.icon_name === "Shield" ? Shield :
+                t.icon_name === "Truck" ? Truck :
+                t.icon_name === "CreditCard" ? CreditCard :
+                t.icon_name === "Headphones" ? Headphones : HelpCircle;
+              return (
+                <div key={`${t.id}-2`} className="flex gap-2 items-center shrink-0">
+                  <div className="rounded-full bg-primary/10 p-1 text-primary shrink-0 animate-pulse">
+                    <IconComponent className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="min-w-0 flex items-baseline gap-1.5">
+                    <h4 className="font-bold text-[10px] text-foreground tracking-tight whitespace-nowrap">{t.title}</h4>
+                    <span className="text-[10px] text-muted-foreground/30 font-bold font-mono">|</span>
+                    <p className="text-[9px] text-muted-foreground whitespace-nowrap">{t.description}</p>
                   </div>
                 </div>
               );

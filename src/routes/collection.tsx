@@ -12,7 +12,7 @@ import {
 } from "@/lib/collection";
 import { useAppSettings, waLink } from "@/lib/settings";
 import { toast } from "sonner";
-import { MessageCircle, Share2, Trash2 } from "lucide-react";
+import { MessageCircle, Share2, Trash2, Heart } from "lucide-react";
 import { publicImageUrl } from "@/components/ImageUploader";
 
 export const Route = createFileRoute("/collection")({
@@ -27,6 +27,10 @@ function CollectionPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [collectionId, setCollectionId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  
+  // Custom double tab toggle views
+  const [activeView, setActiveView] = useState<"collection" | "favorites">("collection");
+  const [favoriteProducts, setFavoriteProducts] = useState<any[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -42,8 +46,40 @@ function CollectionPage() {
         setCollectionId(null);
       }
     };
-    if (!loading) load();
+    const loadFavorites = async () => {
+      if (!user?.id) return;
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("auth_id", user.id)
+        .maybeSingle();
+      if (!profile?.id) return;
+
+      const { data: favs } = await supabase
+        .from("favorites")
+        .select("product_id")
+        .eq("user_id", profile.id);
+      if (favs && favs.length > 0) {
+        const prodData = await fetchProductsByIds(favs.map((f) => f.product_id));
+        setFavoriteProducts(prodData);
+      } else {
+        setFavoriteProducts([]);
+      }
+    };
+    if (!loading) {
+      load();
+      void loadFavorites();
+    }
   }, [user, loading, refreshKey]);
+
+  const removeFavorite = async (productId: string) => {
+    if (!user) return;
+    const { data: profile } = await supabase.from("profiles").select("id").eq("auth_id", user.id).maybeSingle();
+    if (!profile?.id) return;
+    await supabase.from("favorites").delete().eq("user_id", profile.id).eq("product_id", productId);
+    toast.success("Removed from favorites");
+    setRefreshKey((k) => k + 1);
+  };
 
   const remove = async (productId: string) => {
     if (user) await removeItemFromUserCollection(user.id, productId);
@@ -82,8 +118,30 @@ function CollectionPage() {
         /* non-blocking */
       }
     }
-    const shareUrl = `${window.location.origin}/collection/${id}`;
-    const msg = `Hi! Here is my Stoneworks collection: ${shareUrl}`;
+    const activeItems = activeView === "collection" ? products : favoriteProducts;
+    const firstFourImages = activeItems
+      .slice(0, 4)
+      .map((p) => {
+        const url = publicImageUrl(p.generated_studio_image) || publicImageUrl(p.image_url);
+        return url ? `• Photo: ${url}` : "";
+      })
+      .filter(Boolean);
+
+    const shareUrl = activeView === "collection" 
+      ? `${window.location.origin}/collection/${id}`
+      : `${window.location.origin}/collection`;
+
+    const messageParts = [
+      `Hi! Here is my Enreach Concepts collection: ${shareUrl}`,
+      "",
+      "Items in my collection:",
+      ...activeItems.map((p) => `- ${p.name} (Code: ${p.code})`),
+      "",
+      "Product Photos:",
+      ...firstFourImages
+    ];
+
+    const msg = messageParts.join("\n");
     window.open(waLink(settings.sales_whatsapp, msg), "_blank", "noopener,noreferrer");
   };
 
@@ -115,9 +173,34 @@ function CollectionPage() {
         )}
       </div>
 
-      {products.length === 0 ? (
+      {/* View Toggles Tab with Heart Icon */}
+      {user && (
+        <div className="flex gap-4 border-b border-border pb-2 mt-4 text-xs font-semibold uppercase tracking-wider">
+          <button
+            onClick={() => setActiveView("collection")}
+            className={`pb-1.5 border-b-2 transition ${
+              activeView === "collection" ? "border-primary text-primary" : "border-transparent text-muted-foreground"
+            }`}
+          >
+            My Projects ({products.length})
+          </button>
+          <button
+            onClick={() => setActiveView("favorites")}
+            className={`pb-1.5 border-b-2 transition flex items-center gap-1.5 ${
+              activeView === "favorites" ? "border-red-500 text-red-500" : "border-transparent text-muted-foreground"
+            }`}
+          >
+            <Heart className="h-3.5 w-3.5 fill-red-500 text-red-500" />
+            Favorited Hearts ({favoriteProducts.length})
+          </button>
+        </div>
+      )}
+
+      {(activeView === "collection" ? products : favoriteProducts).length === 0 ? (
         <div className="mt-10 rounded-xl border border-dashed border-border p-10 text-center">
-          <p className="text-sm text-muted-foreground">Your collection is empty.</p>
+          <p className="text-sm text-muted-foreground">
+            {activeView === "collection" ? "Your collection is empty." : "You have not favorited any products yet."}
+          </p>
           <Link to="/" className="mt-3 inline-block rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
             Browse products
           </Link>
@@ -131,16 +214,18 @@ function CollectionPage() {
             >
               <MessageCircle className="h-4 w-4" /> Push to WhatsApp
             </button>
-            <button
-              onClick={shareLink}
-              className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-surface-2"
-            >
-              <Share2 className="h-4 w-4" /> Share link
-            </button>
+            {activeView === "collection" && (
+              <button
+                onClick={shareLink}
+                className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-surface-2"
+              >
+                <Share2 className="h-4 w-4" /> Share link
+              </button>
+            )}
           </div>
 
           <ul className="mt-6 divide-y divide-border rounded-xl border border-border bg-card">
-            {products.map((p) => (
+            {(activeView === "collection" ? products : favoriteProducts).map((p) => (
               <li key={p.id} className="flex items-center gap-3 p-3">
                 <Link to="/product/$slug" params={{ slug: p.slug }} className="block h-16 w-16 shrink-0 overflow-hidden rounded-md bg-muted">
                   <img src={publicImageUrl(p.generated_studio_image) || publicImageUrl(p.image_url) || ""} alt={p.name} className="h-full w-full object-cover" loading="lazy" />
@@ -151,8 +236,12 @@ function CollectionPage() {
                   </Link>
                   <p className="text-xs text-muted-foreground">Code · {p.code}</p>
                 </div>
-                <div className="text-right text-sm font-semibold">${Number(p.price).toFixed(2)}</div>
-                <button onClick={() => remove(p.id)} aria-label="Remove" className="rounded-md p-2 text-muted-foreground hover:bg-surface-2 hover:text-destructive">
+                <div className="text-right text-sm font-semibold">₦{Number(p.price).toLocaleString()}</div>
+                <button 
+                  onClick={() => activeView === "collection" ? remove(p.id) : removeFavorite(p.id)} 
+                  aria-label="Remove" 
+                  className="rounded-md p-2 text-muted-foreground hover:bg-surface-2 hover:text-destructive"
+                >
                   <Trash2 className="h-4 w-4" />
                 </button>
               </li>

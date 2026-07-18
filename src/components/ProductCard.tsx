@@ -22,10 +22,17 @@ export function ProductCard({ product }: { product: ProductRow }) {
   useEffect(() => {
     if (!user?.id) return;
     const checkFavorite = async () => {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("auth_id", user.id)
+        .maybeSingle();
+      if (!profile?.id) return;
+
       const { data } = await supabase
         .from("favorites")
         .select("product_id")
-        .eq("user_id", user.id)
+        .eq("user_id", profile.id)
         .eq("product_id", product.id)
         .maybeSingle();
       if (data) setIsFavorite(true);
@@ -51,11 +58,18 @@ export function ProductCard({ product }: { product: ProductRow }) {
     }
     setLoading(true);
     try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("auth_id", user.id)
+        .maybeSingle();
+      if (!profile?.id) throw new Error("User profile not found");
+
       if (isFavorite) {
         const { error } = await supabase
           .from("favorites")
           .delete()
-          .eq("user_id", user.id)
+          .eq("user_id", profile.id)
           .eq("product_id", product.id);
         if (error) throw error;
         setIsFavorite(false);
@@ -64,7 +78,7 @@ export function ProductCard({ product }: { product: ProductRow }) {
         const { error } = await supabase
           .from("favorites")
           .insert({
-            user_id: user.id,
+            user_id: profile.id,
             product_id: product.id
           });
         if (error) throw error;
@@ -94,7 +108,7 @@ export function ProductCard({ product }: { product: ProductRow }) {
           disabled={loading}
           className="absolute top-2.5 right-2.5 z-10 rounded-full p-2 bg-background/85 hover:bg-background text-foreground transition shadow border border-border/80 focus:outline-none"
         >
-          <Heart className={`h-3.5 w-3.5 transition-colors duration-300 ${isFavorite ? "text-destructive fill-destructive" : "text-muted-foreground hover:text-foreground"}`} />
+          <Heart className={`h-3.5 w-3.5 transition-colors duration-300 text-red-500 hover:text-red-600 ${isFavorite ? "fill-red-500" : ""}`} />
         </button>
       )}
 
@@ -121,7 +135,7 @@ export function ProductCard({ product }: { product: ProductRow }) {
           </p>
         </div>
         <p className="font-display text-base font-bold text-primary mt-1">
-          ${Number(product.price).toFixed(2)}
+          ₦${Number(product.price).toLocaleString()}
           <span className="ml-1 text-[10px] font-normal text-muted-foreground">/sqm</span>
         </p>
         <div className="mt-auto flex gap-2 pt-2 border-t border-border/40">
