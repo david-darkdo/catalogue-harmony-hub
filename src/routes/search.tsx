@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, queryOptions } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
-import { ProductCard } from "@/components/ProductCard";
+import { ProductCard, ProductCardSkeleton } from "@/components/ProductCard";
 import { fetchFeedProducts } from "@/lib/catalog";
 import { Search as SearchIcon } from "lucide-react";
 
@@ -91,8 +91,8 @@ function SearchPage() {
               Type something to start searching.
             </p>
           ) : results.isLoading ? (
-            Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="aspect-[3/4] animate-pulse rounded-xl bg-muted" />
+            Array.from({ length: 8 }).map((_, i) => (
+              <ProductCardSkeleton key={i} />
             ))
           ) : (results.data ?? []).length === 0 ? (
             <p className="col-span-full text-sm text-muted-foreground">

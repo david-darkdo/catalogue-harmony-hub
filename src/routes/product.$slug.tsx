@@ -81,7 +81,7 @@ export const Route = createFileRoute("/product/$slug")({
     };
   },
   component: ProductPage,
-  pendingComponent: ProductDetailSkeleton,
+
   notFoundComponent: () => (
     <AppShell>
       <div className="container-app py-16 text-center">

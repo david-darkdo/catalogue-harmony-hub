@@ -8,6 +8,38 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 
+export function ProductCardSkeleton() {
+  return (
+    <div className="relative flex flex-col overflow-hidden rounded-xl border border-border bg-card/60 shadow-xs select-none">
+      <style>{`
+        @keyframes cardBreathing {
+          0%, 100% { transform: scale(0.94); opacity: 0.25; }
+          50% { transform: scale(1.06); opacity: 0.55; }
+        }
+        .animate-card-breathing {
+          animation: cardBreathing 2s ease-in-out infinite;
+        }
+      `}</style>
+      <div className="aspect-square bg-muted/15 relative flex items-center justify-center overflow-hidden">
+        <div className="animate-card-breathing">
+          <img src="/logo.png" alt="Loading" className="h-9 w-auto object-contain opacity-40 dark:opacity-60" />
+        </div>
+      </div>
+      <div className="flex flex-1 flex-col gap-2 p-3">
+        <div className="space-y-2">
+          <div className="h-3.5 bg-muted/20 rounded-md w-3/4 animate-pulse" />
+          <div className="h-2.5 bg-muted/15 rounded-md w-1/2 animate-pulse" />
+        </div>
+        <div className="h-4 bg-muted/10 rounded-md w-1/3 mt-2 animate-pulse" />
+        <div className="mt-auto flex gap-2 pt-2 border-t border-border/30">
+          <div className="flex-1 h-7 bg-muted/10 rounded animate-pulse" />
+          <div className="flex-1 h-7 bg-muted/10 rounded animate-pulse" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ProductCard({ product }: { product: ProductRow }) {
   const { user } = useAuth();
   const [isFavorite, setIsFavorite] = useState(false);

@@ -254,29 +254,41 @@ function RootAppWrapper() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }} 
       />
       {/* Full Page Breathing Logo Loading Screen */}
-      {(showLoader || initialLoading) && (
-        <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-background">
-          <style>{`
-            @keyframes breathing {
-              0%, 100% { transform: scale(0.96); opacity: 0.85; }
-              50% { transform: scale(1.04); opacity: 1; }
-            }
-            .animate-breathing {
-              animation: breathing 2.5s ease-in-out infinite;
-            }
-          `}</style>
-          <div className="flex flex-col items-center gap-4 animate-breathing">
-            <img
-              src="/logo.png"
-              alt="Enreach Concepts Logo"
-              className="h-20 w-auto object-contain"
-            />
-            <p className="font-display text-[10px] tracking-widest text-muted-foreground uppercase">
-              Loading Luxury Showroom
-            </p>
+      {(() => {
+        const isApiRoute = pathname === "/robots.txt" || pathname === "/sitemap.xml" || pathname.startsWith("/api/");
+        const showGlobalLoader = (showLoader || initialLoading) && !isApiRoute;
+        if (!showGlobalLoader) return null;
+        return (
+          <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-background/30 backdrop-blur-[1px] transition-all duration-300 animate-fade-in">
+            <style>{`
+              @keyframes breathing {
+                0%, 100% { transform: scale(0.95); opacity: 0.35; }
+                50% { transform: scale(1.05); opacity: 0.7; }
+              }
+              @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+              }
+              .animate-breathing {
+                animation: breathing 2s ease-in-out infinite;
+              }
+              .animate-fade-in {
+                animation: fadeIn 0.2s ease-out forwards;
+              }
+            `}</style>
+            <div className="flex flex-col items-center gap-4 animate-breathing">
+              <img
+                src="/logo.png"
+                alt="Enreach Concepts Logo"
+                className="h-16 w-auto object-contain"
+              />
+              <p className="font-display text-[9px] tracking-widest text-muted-foreground/80 uppercase">
+                Loading
+              </p>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       <Outlet />
     </div>

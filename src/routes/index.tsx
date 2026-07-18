@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { AppShell } from "@/components/AppShell";
-import { ProductCard } from "@/components/ProductCard";
+import { ProductCard, ProductCardSkeleton } from "@/components/ProductCard";
 import { fetchFeedProducts, fetchTaxonomy, type FeedFilters } from "@/lib/catalog";
 
 type FeedSearch = {
@@ -158,11 +158,8 @@ function FeedPage() {
 
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {products.isLoading
-            ? Array.from({ length: 6 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="aspect-[3/4] animate-pulse rounded-xl bg-muted"
-                />
+            ? Array.from({ length: 8 }).map((_, i) => (
+                <ProductCardSkeleton key={i} />
               ))
             : (products.data ?? []).map((p) => <ProductCard key={p.id} product={p} />)}
         </div>
