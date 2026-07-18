@@ -16,11 +16,11 @@ import {
   Headphones,
   HelpCircle
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { FloatingWhatsApp } from "./FloatingWhatsApp";
-import { syncOfflineActions } from "@/lib/collection";
+import { syncOfflineActions, getUserCollectionItems, getGuestCollection } from "@/lib/collection";
 import { toast } from "sonner";
 import { SiteFooter } from "./SiteFooter";
 
@@ -258,33 +258,41 @@ function TopBar() {
               </button>
 
               {showNotifications && (
-                <div className="absolute right-0 mt-2 w-80 rounded-lg border border-border bg-card shadow-xl p-4 text-xs space-y-3 z-50">
-                  <div className="flex items-center justify-between border-b border-border pb-2">
-                    <span className="font-semibold text-foreground">In-App Notifications</span>
-                    <button onClick={() => setShowNotifications(false)} className="text-muted-foreground hover:text-foreground"><X className="h-4 w-4" /></button>
-                  </div>
+                <>
+                  {/* Backdrop for mobile overlays */}
+                  <div 
+                    onClick={() => setShowNotifications(false)}
+                    className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40 md:hidden"
+                  />
+                  
+                  <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-[340px] rounded-xl border border-border bg-card shadow-2xl p-4 text-xs space-y-3 z-50 md:absolute md:top-auto md:left-auto md:right-0 md:translate-x-0 md:translate-y-0 md:mt-2 md:w-80 md:rounded-lg md:shadow-xl md:p-4">
+                    <div className="flex items-center justify-between border-b border-border pb-2">
+                      <span className="font-semibold text-foreground text-sm md:text-xs">In-App Notifications</span>
+                      <button onClick={() => setShowNotifications(false)} className="text-muted-foreground hover:text-foreground p-1 rounded-full hover:bg-muted"><X className="h-4 w-4" /></button>
+                    </div>
 
-                  <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                    {notifications.map((notif) => (
-                      <div key={notif.id} className="p-2 border border-border rounded bg-background flex gap-2 relative group text-left">
-                        <AlertCircle className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-foreground truncate">{notif.subject || "Alert"}</div>
-                          <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{notif.body}</p>
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                      {notifications.map((notif) => (
+                        <div key={notif.id} className="p-2 border border-border rounded bg-background flex gap-2 relative group text-left">
+                          <AlertCircle className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-foreground truncate">{notif.subject || "Alert"}</div>
+                            <p className="text-[10px] text-muted-foreground mt-0.5 leading-tight">{notif.body}</p>
+                          </div>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); clearNotification(notif.id); }}
+                            className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
                         </div>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); clearNotification(notif.id); }}
-                          className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ))}
-                    {notifications.length === 0 && (
-                      <div className="text-muted-foreground italic text-center py-4">No notifications yet.</div>
-                    )}
+                      ))}
+                      {notifications.length === 0 && (
+                        <div className="text-muted-foreground italic text-center py-4">No notifications yet.</div>
+                      )}
+                    </div>
                   </div>
-                </div>
+                </>
               )}
             </div>
           )}
@@ -340,6 +348,29 @@ function TopBar() {
 function BottomNav() {
   const { user } = useAuth();
   const searchState = useRouterState({ select: (s) => s.location.pathname });
+  
+  const [collectionCount, setCollectionCount] = useState(0);
+
+  const loadCollectionCount = useCallback(async () => {
+    if (user?.id) {
+      try {
+        const { items } = await getUserCollectionItems(user.id);
+        setCollectionCount(items.length);
+      } catch (err) {
+        // ignore
+      }
+    } else {
+      setCollectionCount(getGuestCollection().length);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    void loadCollectionCount();
+    window.addEventListener("collection:change", loadCollectionCount);
+    return () => {
+      window.removeEventListener("collection:change", loadCollectionCount);
+    };
+  }, [loadCollectionCount]);
 
   const nav = [
     { to: "/home" as const, label: "Home", icon: Home, active: searchState === "/home" },
@@ -360,7 +391,14 @@ function BottomNav() {
               t.active ? "text-primary" : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <t.icon className="h-5 w-5" />
+            <div className="relative">
+              <t.icon className="h-5 w-5" />
+              {t.label === "Collection" && collectionCount > 0 && (
+                <span className="absolute -top-1.5 -right-2 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white shadow-sm">
+                  +{collectionCount}
+                </span>
+              )}
+            </div>
             <span>{t.label}</span>
           </Link>
         ))}

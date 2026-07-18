@@ -156,8 +156,15 @@ function ProductPage() {
     if (user?.id) {
       // Track page views
       const trackEvent = async () => {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("auth_id", user.id)
+          .maybeSingle();
+        if (!profile?.id) return;
+
         await supabase.from("customer_activity").insert({
-          user_id: user.id,
+          user_id: profile.id,
           activity_type: "product_viewed",
           metadata: { productId: product.id, name: product.name, category: product.category || "Uncategorized" }
         });
@@ -218,7 +225,7 @@ function ProductPage() {
         toast.success("Saved to favorites");
         // Log event to event bus
         await supabase.from("customer_activity").insert({
-          user_id: user.id,
+          user_id: profile.id,
           activity_type: "favorites_changed",
           metadata: { productId: product.id, name: product.name, action: "added" }
         });
@@ -381,7 +388,7 @@ function ProductPage() {
               {product.name}
             </h1>
             <p className="mt-1.5 font-display text-2xl font-bold text-primary">
-              ₦${Number(product.price).toLocaleString()}
+              ₦{Number(product.price).toLocaleString()}
               <span className="ml-1 text-sm font-normal text-muted-foreground">/sqm</span>
             </p>
           </div>

@@ -119,14 +119,6 @@ function CollectionPage() {
       }
     }
     const activeItems = activeView === "collection" ? products : favoriteProducts;
-    const firstFourImages = activeItems
-      .slice(0, 4)
-      .map((p) => {
-        const url = publicImageUrl(p.generated_studio_image) || publicImageUrl(p.image_url);
-        return url ? `• Photo: ${url}` : "";
-      })
-      .filter(Boolean);
-
     const shareUrl = activeView === "collection" 
       ? `${window.location.origin}/collection/${id}`
       : `${window.location.origin}/collection`;
@@ -135,10 +127,7 @@ function CollectionPage() {
       `Hi! Here is my Enreach Concepts collection: ${shareUrl}`,
       "",
       "Items in my collection:",
-      ...activeItems.map((p) => `- ${p.name} (Code: ${p.code})`),
-      "",
-      "Product Photos:",
-      ...firstFourImages
+      ...activeItems.map((p) => `- ${p.name} (Code: ${p.code})`)
     ];
 
     const msg = messageParts.join("\n");

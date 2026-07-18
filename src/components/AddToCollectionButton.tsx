@@ -49,12 +49,21 @@ export function AddToCollectionButton({
     if (busy) return;
     setBusy(true);
     try {
+      let currentCount = 0;
+      if (user) {
+        const { items } = await getUserCollectionItems(user.id);
+        currentCount = items.length;
+      } else {
+        currentCount = getGuestCollection().length;
+      }
+
       if (!user) {
         // Save guest item, then prompt login
         if (!saved) {
           addGuestItem(productId);
           setSaved(true);
-          toast("Saved to your collection", {
+          const nextCount = currentCount + 1;
+          toast.success(`+${nextCount}`, {
             description: "Sign in to sync across devices.",
             action: { label: "Sign in", onClick: () => navigate({ to: "/auth" }) },
           });
@@ -67,7 +76,8 @@ export function AddToCollectionButton({
           await addItemToUserCollection(user.id, productId);
           setSaved(true);
           window.dispatchEvent(new Event("collection:change"));
-          toast.success("Added to your collection");
+          const nextCount = currentCount + 1;
+          toast.success(`+${nextCount}`);
         } else {
           await removeItemFromUserCollection(user.id, productId);
           setSaved(false);

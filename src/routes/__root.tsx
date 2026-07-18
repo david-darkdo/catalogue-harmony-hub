@@ -194,8 +194,15 @@ function RootAppWrapper() {
 
     // Track page views
     const trackView = async () => {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("auth_id", user.id)
+        .maybeSingle();
+      if (!profile?.id) return;
+
       await supabase.from("customer_activity").insert({
-        user_id: user.id,
+        user_id: profile.id,
         activity_type: pathname === "/" ? "homepage_viewed" : "page_viewed",
         metadata: { path: pathname, timestamp: new Date().toISOString() }
       });
@@ -204,9 +211,16 @@ function RootAppWrapper() {
 
     // Register active PWA mock push device token for testing notifications
     const registerDevice = async () => {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("auth_id", user.id)
+        .maybeSingle();
+      if (!profile?.id) return;
+
       const mockToken = `web_pwa_token_${user.id.substring(0, 8)}_${navigator.userAgent.replace(/[^a-zA-Z0-9]/g, "").substring(0, 16)}`;
       await supabase.from("communication_devices").upsert({
-        user_id: user.id,
+        user_id: profile.id,
         token: mockToken,
         device_type: "web_pwa",
         os_version: navigator.platform,
