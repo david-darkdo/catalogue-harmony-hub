@@ -26,6 +26,32 @@ import {
   FileCheck
 } from "lucide-react";
 
+async function uploadVideoFile(file: File): Promise<string> {
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
+  const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+
+  if (!cloudName || !uploadPreset) {
+    throw new Error("Missing Cloudinary configuration (VITE_CLOUDINARY_CLOUD_NAME / VITE_CLOUDINARY_UPLOAD_PRESET)");
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("upload_preset", uploadPreset);
+
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/video/upload`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Video upload failed: ${text}`);
+  }
+
+  const data = await res.json();
+  return data.secure_url;
+}
+
 export const Route = createFileRoute("/_authenticated/admin/business")({
   head: () => ({ meta: [{ title: "Business Operations — Admin" }] }),
   component: BusinessOpsPage,
@@ -555,21 +581,47 @@ function BusinessOpsPage() {
               <h2 className="font-display text-base font-bold text-foreground">Hero Videos Carousel Manager</h2>
             </div>
             
-            {/* Add video form */}
-            <div className="flex gap-2">
-              <input
-                value={newVideoUrl}
-                onChange={(e) => setNewVideoUrl(e.target.value)}
-                placeholder="Background video URL (.mp4)"
-                className="flex-1 rounded border border-border bg-background px-3 py-1.5 text-xs outline-none focus:border-primary"
-              />
-              <button
-                disabled={busy}
-                onClick={addHeroVideo}
-                className="inline-flex items-center gap-1 rounded bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/95 disabled:opacity-60 transition"
-              >
-                <Plus className="h-3.5 w-3.5" /> Add
-              </button>
+            {/* Add video form with upload & URL support */}
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <input
+                  value={newVideoUrl}
+                  onChange={(e) => setNewVideoUrl(e.target.value)}
+                  placeholder="Paste background video URL (.mp4)"
+                  className="flex-1 rounded border border-border bg-background px-3 py-1.5 text-xs outline-none focus:border-primary"
+                />
+                <button
+                  disabled={busy || !newVideoUrl}
+                  onClick={addHeroVideo}
+                  className="inline-flex items-center gap-1 rounded bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/95 disabled:opacity-60 transition"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Add
+                </button>
+              </div>
+              <div className="relative border border-dashed border-border rounded-lg p-3 text-center bg-background/50 hover:bg-background transition">
+                <input
+                  type="file"
+                  accept="video/mp4,video/webm,video/quicktime"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    
+                    const uploadToast = toast.loading("Uploading video to Cloudinary...", { duration: 0 });
+                    try {
+                      const url = await uploadVideoFile(file);
+                      setNewVideoUrl(url);
+                      toast.dismiss(uploadToast);
+                      toast.success("Video uploaded! Click 'Add' to activate.");
+                    } catch (err) {
+                      toast.dismiss(uploadToast);
+                      toast.error(err.message || "Failed to upload video");
+                    }
+                  }}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+                <p className="text-xs text-muted-foreground font-medium">Drag and drop video here, or <span className="text-primary underline cursor-pointer">browse local files</span></p>
+                <p className="text-[10px] text-muted-foreground/80 mt-1">Supports MP4, WebM, MOV. Max size 20MB.</p>
+              </div>
             </div>
 
             {/* Videos List */}

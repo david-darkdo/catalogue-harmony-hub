@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { ImageUploader } from "@/components/ImageUploader";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -536,10 +537,31 @@ function CommunicationCenterPage() {
                   </label>
                 </div>
 
-                <label className="block text-xs">
-                  <span className="text-muted-foreground font-medium">Banner Image URL</span>
-                  <input value={editingCampaign.banner_url ?? ""} onChange={(e) => setEditingCampaign({ ...editingCampaign, banner_url: e.target.value })} className="mt-1 w-full rounded border border-border bg-background px-3 py-1.5" />
-                </label>
+                <div className="space-y-1 text-xs">
+                  <span className="text-muted-foreground font-medium">Campaign Banner Image</span>
+                  {editingCampaign.banner_url ? (
+                    <div className="relative group max-w-xs rounded overflow-hidden border border-border mt-1">
+                      <img src={editingCampaign.banner_url} alt="Banner" className="w-full h-24 object-cover" />
+                      <button 
+                        type="button"
+                        onClick={() => setEditingCampaign({ ...editingCampaign, banner_url: "" })}
+                        className="absolute top-1.5 right-1.5 bg-black/75 hover:bg-black text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <ImageUploader 
+                      compact 
+                      multiple={false} 
+                      onUploaded={(urls) => {
+                        if (urls.length > 0) {
+                          setEditingCampaign({ ...editingCampaign, banner_url: urls[0] });
+                        }
+                      }} 
+                    />
+                  )}
+                </div>
 
                 <label className="block text-xs">
                   <span className="text-muted-foreground font-medium">Campaign Message Copy</span>
@@ -735,6 +757,21 @@ function CommunicationCenterPage() {
                     <span className="text-muted-foreground font-medium">Description</span>
                     <input value={editingTemplate.description || ""} onChange={(e) => setEditingTemplate({ ...editingTemplate, description: e.target.value })} className="mt-1 w-full rounded border border-border bg-background px-3 py-1.5" />
                   </label>
+                </div>
+
+                <div className="border-t border-border pt-3 space-y-2">
+                  <h4 className="text-xs font-semibold uppercase tracking-wider text-primary">Template Asset Uploader</h4>
+                  <p className="text-[10px] text-muted-foreground">Upload images for your template body. The URL will copy automatically so you can paste it inside your HTML template.</p>
+                  <ImageUploader 
+                    compact 
+                    multiple={false} 
+                    onUploaded={(urls) => {
+                      if (urls.length > 0) {
+                        navigator.clipboard.writeText(urls[0]);
+                        toast.success("Uploaded successfully! Image URL copied to clipboard.");
+                      }
+                    }} 
+                  />
                 </div>
 
                 <div className="border-t border-border pt-3">

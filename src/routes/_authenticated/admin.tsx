@@ -112,6 +112,9 @@ function AdminLayout() {
             ))}
           </div>
           <div className="relative ml-auto flex items-center gap-2">
+            <Link to="/" className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:border-primary hover:text-primary transition shrink-0">
+              <span>Storefront Feed</span>
+            </Link>
             {/* Admin Notifications Bell */}
             {user && (
               <div className="relative">
