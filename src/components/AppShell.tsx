@@ -63,12 +63,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <TopBar />
-      <main className="flex-1 pb-16 md:pb-0">{children}</main>
+      <main className="flex-1 pb-28 md:pb-16">{children}</main>
 
-      {/* Trust Information Strip */}
+      {/* Fixed Persistent Trust Information Strip */}
       {trustFeatures.length > 0 && (
-        <section className="border-t border-border bg-card/65 backdrop-blur py-5 mt-auto">
-          <div className="container-app grid grid-cols-2 gap-4 md:grid-cols-4">
+        <section className="fixed bottom-12 md:bottom-0 left-0 right-0 z-20 border-t border-border bg-background/95 py-2.5 shadow-md md:py-3.5 backdrop-blur">
+          <div className="container-app grid grid-cols-2 gap-3 md:grid-cols-4">
             {trustFeatures.map((t) => {
               const IconComponent =
                 t.icon_name === "Shield" ? Shield :
@@ -76,13 +76,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 t.icon_name === "CreditCard" ? CreditCard :
                 t.icon_name === "Headphones" ? Headphones : HelpCircle;
               return (
-                <div key={t.id} className="flex gap-2.5 items-start">
-                  <div className="rounded-md bg-primary/10 p-1.5 text-primary shrink-0">
-                    <IconComponent className="h-4 w-4" />
+                <div key={t.id} className="flex gap-2 items-center justify-center transition-transform hover:scale-102">
+                  <div className="rounded-full bg-primary/15 p-1 text-primary shrink-0 animate-pulse">
+                    <IconComponent className="h-3.5 w-3.5" />
                   </div>
-                  <div>
-                    <h4 className="font-semibold text-xs text-foreground tracking-tight">{t.title}</h4>
-                    <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug">{t.description}</p>
+                  <div className="min-w-0">
+                    <h4 className="font-bold text-[10px] text-foreground tracking-tight leading-tight">{t.title}</h4>
+                    <p className="text-[8px] text-muted-foreground leading-none mt-0.5">{t.description}</p>
                   </div>
                 </div>
               );
@@ -307,11 +307,11 @@ function BottomNav() {
   const searchState = useRouterState({ select: (s) => s.location.pathname });
 
   const nav = [
-    { to: "/" as const, label: "Home", icon: Home, active: searchState === "/" },
+    { to: "/home" as const, label: "Home", icon: Home, active: searchState === "/home" },
     { to: "/search" as const, label: "Search", icon: Search, active: searchState.startsWith("/search") },
-    { to: "/collection" as const, label: "Feed", icon: Compass, active: searchState.startsWith("/collection") },
-    { to: "/favorites" as const, label: "Collection", icon: Bookmark, active: searchState.startsWith("/favorites") },
-    { to: user ? ("/favorites" as const) : ("/auth" as const), label: "Account", icon: User, active: searchState.startsWith("/auth") },
+    { to: "/" as const, label: "Feed", icon: Compass, active: searchState === "/" },
+    { to: "/collection" as const, label: "Collection", icon: Bookmark, active: searchState.startsWith("/collection") },
+    { to: user ? ("/account" as const) : ("/auth" as const), label: "Account", icon: User, active: searchState.startsWith("/account") || searchState.startsWith("/auth") },
   ];
 
   return (

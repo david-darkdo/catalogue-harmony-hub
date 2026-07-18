@@ -319,22 +319,22 @@ function ProductPage() {
             )}
           </div>
 
-          {/* Installed Lifestyle Reference with Aspect Ratio Preservation */}
-          <div className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm flex flex-col justify-between min-h-[300px]">
-            <div className="flex-1 flex items-center justify-center p-2 bg-muted/20">
+          {/* Installed Lifestyle Reference - Full Frame Cover */}
+          <div className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm flex flex-col justify-between aspect-square">
+            <div className="flex-1 overflow-hidden">
               {installed ? (
                 <img
                   src={installed}
                   alt={`${product.name} installed scene`}
                   loading="lazy"
                   onClick={() => setLightboxImg(installed)}
-                  className="w-full h-auto max-h-[40vh] object-contain cursor-zoom-in hover:opacity-95 transition-opacity"
+                  className="w-full h-full object-cover cursor-zoom-in hover:scale-[1.01] transition-transform duration-300"
                 />
               ) : (
-                <div className="text-xs text-muted-foreground italic">No installed preview uploaded</div>
+                <div className="text-xs text-muted-foreground italic flex h-full items-center justify-center bg-muted/20">No installed preview uploaded</div>
               )}
             </div>
-            <div className="border-t border-border px-3.5 py-2 text-[9px] uppercase tracking-[0.18em] text-muted-foreground font-semibold bg-background">
+            <div className="border-t border-border px-3.5 py-2 text-[9px] uppercase tracking-[0.18em] text-muted-foreground font-semibold bg-background shrink-0">
               Installed reference / lifestyle layout
             </div>
           </div>

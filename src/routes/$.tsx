@@ -149,12 +149,7 @@ const hierarchyQuery = (splat: string, origin: string) =>
     },
   });
 
-export const Route = createFileRoute("/$")({
-  loader: async ({ context, params, request }) => {
-    const origin = new URL(request.url).origin;
-    const data = await context.queryClient.ensureQueryData(hierarchyQuery(params._splat, origin));
-    return data;
-  },
+
   head: ({ loaderData }) => {
     if (!loaderData) return {};
     const { type, category, subcategory, family, origin } = loaderData;
