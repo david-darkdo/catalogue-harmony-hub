@@ -280,12 +280,25 @@ function ProductPage() {
     "offers": {
       "@type": "Offer",
       "url": `${origin}/product/${product.slug}`,
-      "priceCurrency": "USD",
+      "priceCurrency": "NGN",
       "price": product.price,
       "availability": "https://schema.org/InStock",
       "itemCondition": "https://schema.org/NewCondition"
     }
   };
+
+  const faqSchema = product.faq && Array.isArray(product.faq) ? {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": (product.faq as any[]).map((f) => ({
+      "@type": "Question",
+      "name": f.question || f.q || "",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": f.answer || f.a || ""
+      }
+    }))
+  } : null;
 
   const handleLightboxNav = (dir: "prev" | "next") => {
     const idx = galleryImages.indexOf(lightboxImg || "");
@@ -305,6 +318,9 @@ function ProductPage() {
       {/* Schema LD Injections */}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }} />
+      {faqSchema && (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }} />
+      )}
       {product.structured_data && (
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(product.structured_data) }} />
       )}
@@ -396,6 +412,24 @@ function ProductPage() {
           {product.short_description && (
             <div className="rounded-xl border border-border/80 bg-card p-4 text-xs leading-relaxed text-muted-foreground max-w-prose shadow-sm">
               {product.short_description}
+            </div>
+          )}
+
+          {/* FAQ Accordion Section */}
+          {product.faq && Array.isArray(product.faq) && (product.faq as any[]).length > 0 && (
+            <div className="rounded-xl border border-border/80 bg-card p-4 text-xs space-y-3 max-w-prose shadow-sm">
+              <h3 className="font-display text-sm font-semibold uppercase tracking-wider text-foreground border-b border-border/40 pb-2">Frequently Asked Questions</h3>
+              <div className="space-y-4">
+                {(product.faq as any[]).map((f, i) => (
+                  <div key={i} className="space-y-1">
+                    <h4 className="font-semibold text-xs text-foreground flex gap-1.5 items-start">
+                      <span className="text-primary font-bold">Q:</span>
+                      <span>{f.question || f.q}</span>
+                    </h4>
+                    <p className="pl-4 text-xs text-muted-foreground leading-relaxed">{f.answer || f.a}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

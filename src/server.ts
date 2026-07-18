@@ -57,30 +57,8 @@ export default {
         console.error("Redirect lookup failed:", err);
       }
 
-      // 2. Intercept robots.txt
-      if (urlObj.pathname === "/robots.txt") {
-        const robotsTxt = `User-agent: *
-Allow: /
-
-Sitemap: ${urlObj.origin}/sitemap.xml
-`;
-        return new Response(robotsTxt, {
-          headers: {
-            "Content-Type": "text/plain",
-            "Cache-Control": "public, max-age=3600, s-maxage=18000",
-          },
-        });
-      }
-
-      // 3. Rewrite sitemap.xml to sitemap/xml
-      let req = request;
-      if (urlObj.pathname === "/sitemap.xml") {
-        urlObj.pathname = "/sitemap/xml";
-        req = new Request(urlObj.toString(), request);
-      }
-
       const handler = await getServerEntry();
-      const response = await handler.fetch(req, env, ctx);
+      const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
       console.error(error);

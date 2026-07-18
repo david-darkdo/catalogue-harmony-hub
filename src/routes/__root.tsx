@@ -232,8 +232,27 @@ function RootAppWrapper() {
     void registerDevice();
   }, [user?.id, pathname]);
 
+  const loaderData = Route.useLoaderData();
+  const settings = loaderData?.settings;
+  const orgSchema = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": settings?.company_name || "Enreach Concepts",
+    "url": typeof window !== "undefined" ? window.location.origin : "https://enreachconcepts.com",
+    "logo": settings?.company_logo || (typeof window !== "undefined" ? `${window.location.origin}/logo.png` : "https://enreachconcepts.com/logo.png"),
+    "contactPoint": {
+      "@type": "ContactPoint",
+      "telephone": settings?.support_whatsapp || "",
+      "contactType": "sales & customer support"
+    }
+  };
+
   return (
     <div className="relative min-h-screen bg-background">
+      <script 
+        type="application/ld+json" 
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }} 
+      />
       {/* Full Page Breathing Logo Loading Screen */}
       {(showLoader || initialLoading) && (
         <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-background">
