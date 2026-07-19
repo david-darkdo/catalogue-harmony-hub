@@ -75,7 +75,15 @@ function EditPage() {
   if (!p) return <div className="container-app py-10 text-sm text-muted-foreground">Loading…</div>;
 
   const set = (k: string, v: any) => {
-    setP((prev: any) => ({ ...prev, [k]: v }));
+    setP((prev: any) => {
+      const next = { ...prev, [k]: v };
+      if (k === "short_description") {
+        next.generated_description = v;
+      } else if (k === "generated_description") {
+        next.short_description = v;
+      }
+      return next;
+    });
     setIsDirty(true);
   };
 
@@ -182,15 +190,14 @@ function EditPage() {
           />
         </section>
 
-        {/* Image Mode */}
+        {/* Ingestion Mode */}
         <section className="rounded-xl border border-border bg-card p-5 space-y-3">
-          <h2 className="font-display font-semibold">Image Mode</h2>
+          <h2 className="font-display font-semibold">Ingestion Mode</h2>
           <select value={p.image_mode ?? "manual"} onChange={(e) => set("image_mode", e.target.value)} className={inp}>
-            <option value="manual">Manual — no AI image generation</option>
-            <option value="ai">AI Generation — from one reference photo</option>
-            <option value="hybrid">Hybrid — your images + AI text</option>
+            <option value="ai">AI Mode — Automated Pipeline Execution</option>
+            <option value="manual">Manual Mode — Manual description & SEO</option>
           </select>
-          <p className="text-xs text-muted-foreground">Change and save, then Regenerate to apply.</p>
+          <p className="text-xs text-muted-foreground">Toggle and save, then Regenerate to apply.</p>
         </section>
         {/* Discovery Readiness Score Card */}
         <section className="rounded-xl border border-border bg-card p-5 space-y-3">
@@ -492,14 +499,14 @@ function AssetManager({
     await onChange();
   };
 
-  const groups: AssetRow["asset_type"][] = ["original", "studio", "installed", "gallery"];
+  const groups: AssetRow["asset_type"][] = ["original", "installed", "gallery"];
 
   return (
     <div className="space-y-5">
       {groups.map((g) => {
         const list = assets.filter((a) => a.asset_type === g);
         const acceptMultiple = g === "gallery" || g === "original";
-        const canUploadHere = !(imageMode === "ai" && (g === "studio" || g === "installed"));
+        const canUploadHere = !(imageMode === "ai" && g === "installed");
         return (
           <div key={g} className="space-y-2">
             <div className="flex items-center justify-between">
@@ -525,7 +532,7 @@ function AssetManager({
                     url={publicImageUrl(a.asset_url)!}
                     isPrimary={a.is_primary}
                     badge={a.generated_by_ai ? "AI" : undefined}
-                    onSetPrimary={() => setPrimary(a)}
+                    onSetPrimary={a.asset_type === "original" ? () => setPrimary(a) : undefined}
                     onDelete={() => remove(a)}
                   />
                 ))}

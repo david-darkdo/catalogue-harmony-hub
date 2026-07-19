@@ -1,14 +1,14 @@
-import { createServerFn } from "@tanstack/react-start";
+﻿import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { getAIProvider, AIProviderError } from "./ai-providers";
 
 type JobType =
   | "understanding"
-  | "search_index"
   | "seo"
-  | "description"
-  | "image_generation"
-  | "faq_generation";
+  | "lifestyle"
+  | "search"
+  | "recommendation"
+  | "quality";
 
 async function callLLM(provider: any, prompt: string, system: string): Promise<string> {
   return provider.callLLM(prompt, system);
@@ -27,126 +27,33 @@ async function tryJSON<T = any>(provider: any, prompt: string, system: string): 
  * and finally rebuilding search_index + flipping processing_state.
  */
 async function resolvePromptTemplate(supabase: any, product: any) {
-  let contextId = product.installation_context_id;
-  
-  if (!contextId && product.type_id) {
-    const { data: pt } = await supabase
-      .from("product_types")
-      .select("installation_context_id")
-      .eq("id", product.type_id)
-      .maybeSingle();
-    if (pt?.installation_context_id) {
-      contextId = pt.installation_context_id;
-    }
-  }
-  
-  // Query all active templates from database
   const { data: activeTemplates } = await supabase
     .from("ai_prompt_templates")
-    .select("*")
+    .select("key, prompt_text")
     .eq("is_active", true);
-  
-  let template: any = null;
-  
-  if (activeTemplates && activeTemplates.length > 0) {
-    // Scoring routing engine
-    const scored = activeTemplates.map((t: any) => {
-      let score = 0;
-      let disqualified = false;
-      
-      // Brand Override Check
-      if (t.brand_override) {
-        if (product.brand && t.brand_override.toLowerCase() === product.brand.toLowerCase()) {
-          score += 100;
-        } else {
-          disqualified = true; // mismatch disqualifies
-        }
-      }
-      
-      // Subcategory Match
-      if (t.subcategory_id) {
-        if (product.subcategory_id && t.subcategory_id === product.subcategory_id) {
-          score += 50;
-        } else {
-          disqualified = true;
-        }
-      }
-      
-      // Category Match
-      if (t.category_id) {
-        if (product.category_id && t.category_id === product.category_id) {
-          score += 30;
-        } else {
-          disqualified = true;
-        }
-      }
-      
-      // Product Type Match
-      if (t.product_type_id) {
-        if (product.type_id && t.product_type_id === product.type_id) {
-          score += 15;
-        } else {
-          disqualified = true;
-        }
-      }
-      
-      // Context Match
-      if (t.installation_context_id) {
-        if (contextId && t.installation_context_id === contextId) {
-          score += 10;
-        } else {
-          disqualified = true;
-        }
-      }
-      
-      return { template: t, score, disqualified };
-    });
-    
-    // Filter and Sort by Score (desc), Priority (desc), Version (desc)
-    const valid = scored
-      .filter((s: any) => !s.disqualified)
-      .sort((a: any, b: any) => {
-        if (b.score !== a.score) return b.score - a.score;
-        const prioB = b.template.priority || 0;
-        const prioA = a.template.priority || 0;
-        if (prioB !== prioA) return prioB - prioA;
-        const verB = b.template.version || 1;
-        const verA = a.template.version || 1;
-        return verB - verA;
-      });
-      
-    if (valid.length > 0) {
-      template = valid[0].template;
-    }
-  }
-  
-  if (!template) {
-    const { data } = await supabase
-      .from("ai_prompt_templates")
-      .select("*")
-      .limit(1)
-      .maybeSingle();
-    template = data;
-  }
-  
+
+  const templatesMap = (activeTemplates || []).reduce((acc: Record<string, string>, t: any) => {
+    if (t.key) acc[t.key] = t.prompt_text || "";
+    return acc;
+  }, {});
+
   return {
-    understanding_prompt: template?.understanding_prompt ?? 'Analyse this product for an Abuja luxury interiors showroom.\nProduct: {product_name}\nBrand: {brand}\nFinish: {finish}\nSize: {size}\nColor: {color}\nMaterial: {material}\n\nRespond with keys: material, finish, color, style, environment, installation_context (one of luxury_bathroom, luxury_kitchen, luxury_living_room, luxury_bedroom, luxury_hotel, luxury_office, luxury_exterior, luxury_showroom, luxury_commercial), product_type, keywords (string[]), tags (string[]), confidence (0-1).',
-    description_prompt: template?.description_prompt ?? 'Write a luxury showroom description for {product_name}, a {category} in {finish} {material}. Emphasize craftsmanship, provenance, and how it elevates a {context}. 3 short paragraphs.',
-    seo_prompt: template?.seo_prompt ?? 'Create SEO for {product_name}. Include seo_title (<=60), seo_description (<=155), seo_keywords (string[]), og_title, og_description, canonical_slug (kebab).',
-    faq_prompt: template?.faq_prompt ?? 'Generate a JSON object { faq: [{q, a}, ...] } with 5 buyer FAQs for {product_name}.',
-    studio_prompt: template?.studio_prompt ?? 'Professional studio product photograph of {product_name} ({material}, {finish}). Isolated on soft neutral background, museum lighting, ultra-sharp, preserve exact color/finish/material/orientation. 4k.',
-    installed_prompt: template?.installed_prompt ?? 'Photorealistic {context} scene featuring {product_name} installed in-situ. Preserve product identity exactly. Cinematic architectural photography, natural light, luxury Nigerian interior styling.',
-    installation_context_id: template?.installation_context_id ?? contextId ?? null
+    understanding_prompt: templatesMap.understanding || 'You are a luxury product understanding engine. Analyze the uploaded product image and details.\nProduct Details:\nName: {product_name}\nBrand: {brand}\nFinish: {finish}\nMaterial: {material}\nColor: {color}\nSize: {size}\nAdditional Directives: {family_override}\n\nOutput a strict JSON object with:\n- product_type\n- installation_area\n- indoor_outdoor\n- surface_types (array)\n- material\n- finish\n- texture\n- color\n- pattern\n- shape\n- style\n- luxury_level\n- installation_context\n- customer_intent\n- architectural_use\n- related_categories (array)\n- search_keywords (array)\n- visual_characteristics (array)\n- design_language\n- confidence (0-1)',
+    seo_prompt: templatesMap.seo || 'Consuming the following Product Intelligence:\n{product_intelligence}\n\nProduct Details:\nName: {product_name}\nBrand: {brand}\n\nGenerate a strict JSON object containing:\n- generated_description\n- seo_title\n- meta_description\n- seo_keywords (array)\n- canonical_slug\n- og_title\n- og_description\n- twitter_card\n- faq (array of 5 objects containing: { q, a })\n- structured_data (JSON-LD FAQPage metadata schema)',
+    lifestyle_prompt: templatesMap.lifestyle || 'You are a prompt engineer for an image generation pipeline. Create a prompt to place the product naturally inside a beautiful, realistic installation scene (e.g. luxury home interior or premium commercial environment) matching {material} {product_type} with a {finish} finish, color {color}, style {style}, setting {installation_context}. Maintain the original design, material, texture, finish, color, and geometric proportions of the product exactly.',
+    search_prompt: templatesMap.search || 'Analyze the Product Intelligence:\n{product_intelligence}\n\nGenerate search terms and variations as JSON: search_aliases (array), builder_terminology (array), designer_terminology (array), contractor_terminology (array), common_misspellings (array), name_variations (array), material_terminology (array), regional_variations (array)',
+    recommendation_prompt: templatesMap.recommendation || 'Analyze the Product Intelligence:\n{product_intelligence}\n\nGenerate recommendation parameters as JSON: related_product_types (array), matching_collection_styles (array), cross_sell_categories (array), complementary_materials (array), upsell_triggers (array)',
+    quality_prompt: templatesMap.quality || 'Verify if the generated lifestyle image matches the original product image. Product Intelligence: {product_intelligence}\nOriginal Product Image: {original_image_url}\nGenerated Lifestyle Image: {generated_image_url}\n\nDetermine if the AI redesigned, replaced, or changed the product. Output JSON: passes_validation (boolean), confidence_score (0-100), product_preserved (boolean), failure_reasons (array)'
   };
 }
 
-async function interpolatePrompt(supabase: any, templateText: string, product: any, contextId?: string | null) {
+async function interpolatePrompt(supabase: any, templateText: string, product: any) {
   let contextName = "luxury showroom";
   let categoryName = "premium material";
   let typeName = "product";
 
   const [contextRes, categoryRes, typeRes, settingsRes] = await Promise.all([
-    contextId ? supabase.from("installation_contexts").select("name").eq("id", contextId).maybeSingle() : Promise.resolve({ data: null }),
+    product.installation_context_id ? supabase.from("installation_contexts").select("name").eq("id", product.installation_context_id).maybeSingle() : Promise.resolve({ data: null }),
     product.category_id ? supabase.from("categories").select("name").eq("id", product.category_id).maybeSingle() : Promise.resolve({ data: null }),
     product.type_id ? supabase.from("product_types").select("name").eq("id", product.type_id).maybeSingle() : Promise.resolve({ data: null }),
     supabase.from("app_settings").select("*").limit(1).maybeSingle()
@@ -158,7 +65,6 @@ async function interpolatePrompt(supabase: any, templateText: string, product: a
 
   const settings = settingsRes.data;
 
-  // Handle detected attributes fallback from product_understanding
   let material = product.material;
   let finish = product.finish ?? product.finish_name;
   let color = product.color;
@@ -190,11 +96,6 @@ async function interpolatePrompt(supabase: any, templateText: string, product: a
     .replace(/{company_phone}/g, settings?.sales_whatsapp ?? settings?.support_whatsapp ?? "");
 }
 
-/**
- * Runs every pending/failed AI job for a product in dependency order,
- * writing outputs to products / product_understanding / product_assets
- * and finally rebuilding search_index + flipping processing_state.
- */
 export const runProductPipeline = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { productId: string }) => {
@@ -269,7 +170,6 @@ export const runProductPipeline = createServerFn({ method: "POST" })
     const jobList = (jobs ?? []) as any[];
     if (jobList.length === 0) throw new Error("No jobs queued. Enqueue pipeline first.");
 
-    // Resolve templates and overrides
     const resolvedTemplates = await resolvePromptTemplate(supabase, product);
     let familyOverride: string | null = null;
     if (product.family_id) {
@@ -283,7 +183,6 @@ export const runProductPipeline = createServerFn({ method: "POST" })
       }
     }
 
-    // Helpers
     const setJob = async (id: string, patch: Record<string, unknown>) => {
       await supabase.from("ai_jobs" as any).update({ ...patch, updated_at: new Date().toISOString() }).eq("id", id);
     };
@@ -302,9 +201,12 @@ export const runProductPipeline = createServerFn({ method: "POST" })
         const jt = job.job_type as JobType;
         const result: Record<string, unknown> = {};
 
+        // Fetch current product understanding if any
+        const { data: puData } = await supabase.from("product_understanding").select("*").eq("product_id", productId).maybeSingle();
+
         if (jt === "understanding") {
           const rawPrompt = resolvedTemplates.understanding_prompt;
-          let prompt = await interpolatePrompt(supabase, rawPrompt, product, resolvedTemplates.installation_context_id);
+          let prompt = await interpolatePrompt(supabase, rawPrompt, product);
           if (familyOverride) {
             prompt += `\n\nAdditional Directives: ${familyOverride}`;
           }
@@ -321,38 +223,38 @@ export const runProductPipeline = createServerFn({ method: "POST" })
             detected_finish: parsed.finish ?? null,
             detected_color: parsed.color ?? null,
             detected_style: parsed.style ?? null,
-            detected_environment: parsed.environment ?? null,
+            detected_environment: parsed.installation_context ?? null,
             detected_installation_context: parsed.installation_context ?? null,
             detected_product_type: parsed.product_type ?? null,
-            detected_keywords: parsed.keywords ?? [],
             detected_tags: parsed.tags ?? [],
+            detected_keywords: parsed.search_keywords ?? [],
+            detected_installation_area: parsed.installation_area ?? null,
+            detected_indoor_outdoor: parsed.indoor_outdoor ?? null,
+            detected_surface_types: parsed.surface_types ?? [],
+            detected_texture: parsed.texture ?? null,
+            detected_pattern: parsed.pattern ?? null,
+            detected_shape: parsed.shape ?? null,
+            detected_luxury_level: parsed.luxury_level ?? null,
+            detected_customer_intent: parsed.customer_intent ?? null,
+            detected_architectural_use: parsed.architectural_use ?? null,
+            detected_related_categories: parsed.related_categories ?? [],
+            detected_search_keywords: parsed.search_keywords ?? [],
+            detected_visual_characteristics: parsed.visual_characteristics ?? [],
+            detected_design_language: parsed.design_language ?? null,
             confidence_score: parsed.confidence ?? 0.7,
             provider: provider.name,
           }, { onConflict: "product_id" } as any);
-          // link installation context if we can
+
           if (parsed.installation_context) {
             const { data: ic } = await supabase.from("installation_contexts")
               .select("id").eq("slug", parsed.installation_context).maybeSingle();
             if (ic?.id) await supabase.from("products").update({ installation_context_id: ic.id } as any).eq("id", productId);
           }
           Object.assign(result, parsed);
-        } else if (jt === "description") {
-          const rawPrompt = resolvedTemplates.description_prompt;
-          let prompt = await interpolatePrompt(supabase, rawPrompt, product, resolvedTemplates.installation_context_id);
-          if (familyOverride) {
-            prompt += `\n\nAdditional Directives: ${familyOverride}`;
-          }
-          lastCompiledPrompt = prompt;
-          const text = await callLLM(
-            provider,
-            prompt,
-            "You are a luxury interiors copywriter. British English."
-          );
-          await supabase.from("products").update({ generated_description: text } as any).eq("id", productId);
-          result.description = text.slice(0, 200);
         } else if (jt === "seo") {
           const rawPrompt = resolvedTemplates.seo_prompt;
-          let prompt = await interpolatePrompt(supabase, rawPrompt, product, resolvedTemplates.installation_context_id);
+          let prompt = await interpolatePrompt(supabase, rawPrompt, product);
+          prompt = prompt.replace(/{product_intelligence}/g, JSON.stringify(puData || {}, null, 2));
           if (familyOverride) {
             prompt += `\n\nAdditional Directives: ${familyOverride}`;
           }
@@ -360,72 +262,57 @@ export const runProductPipeline = createServerFn({ method: "POST" })
           const seo = await tryJSON<any>(
             provider,
             prompt,
-            "You are an SEO engineer. Output strict JSON."
+            "You are a copywriting and SEO engine. Output strict JSON."
           ) ?? {};
-          
+
           const seoPayload: any = {};
+          if (seo.generated_description) {
+            seoPayload.generated_description = seo.generated_description;
+            seoPayload.short_description = seo.generated_description; // Canonical Description Lock
+          }
           if (!product.seo_title_manual) {
             seoPayload.seo_title = seo.seo_title ?? product.name;
           }
           if (!product.seo_description_manual) {
-            seoPayload.seo_description = seo.seo_description ?? product.short_description;
+            seoPayload.seo_description = seo.seo_description ?? seo.generated_description;
           }
           if (!product.seo_keywords_manual) {
             seoPayload.seo_keywords = seo.seo_keywords ?? [];
           }
-          
+          if (seo.canonical_slug) {
+            seoPayload.canonical_slug = seo.canonical_slug;
+          }
+          if (seo.faq) {
+            seoPayload.faq = seo.faq;
+          }
+          if (seo.structured_data) {
+            seoPayload.structured_data = seo.structured_data;
+          }
+
           if (Object.keys(seoPayload).length > 0) {
             await supabase.from("products").update(seoPayload).eq("id", productId);
           }
           Object.assign(result, seo);
-        } else if (jt === "faq_generation") {
-          const rawPrompt = resolvedTemplates.faq_prompt;
-          let prompt = await interpolatePrompt(supabase, rawPrompt, product, resolvedTemplates.installation_context_id);
-          if (familyOverride) {
-            prompt += `\n\nAdditional Directives: ${familyOverride}`;
-          }
-          lastCompiledPrompt = prompt;
-          const faq = await tryJSON<any>(
-            provider,
-            prompt,
-            "You are a product expert. Output strict JSON."
-          ) ?? { faq: [] };
-          const structured = {
-            "@context": "https://schema.org",
-            "@type": "FAQPage",
-            mainEntity: (faq.faq ?? []).map((f: any) => ({
-              "@type": "Question", name: f.q,
-              acceptedAnswer: { "@type": "Answer", text: f.a },
-            })),
-          };
-          await supabase.from("products").update({ faq: faq.faq ?? [], structured_data: structured } as any).eq("id", productId);
-          result.count = (faq.faq ?? []).length;
-        } else if (jt === "image_generation") {
+        } else if (jt === "lifestyle") {
           if (product.image_mode === "manual") {
             result.mode = "manual";
             result.skipped = true;
-            result.message = "Skipped AI image generation because the product's image mode is set to manual.";
+            result.message = "Skipped AI image generation because image mode is set to manual.";
           } else {
             const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-            const { data: pu } = await supabase.from("product_understanding" as any)
-              .select("*").eq("product_id", productId).maybeSingle();
-            const und: any = pu ?? {};
-            const ctxSlug = und.detected_installation_context ?? "luxury_showroom";
-            const ctxLabel = String(ctxSlug).replace(/^luxury_/, "").replace(/_/g, " ");
-
-            const rawStudio = resolvedTemplates.studio_prompt;
-            const rawInstalled = resolvedTemplates.installed_prompt;
-            let studioPrompt = await interpolatePrompt(supabase, rawStudio, product, resolvedTemplates.installation_context_id);
-            let installedPrompt = await interpolatePrompt(supabase, rawInstalled, product, resolvedTemplates.installation_context_id);
-
+            const rawLifestyle = resolvedTemplates.lifestyle_prompt;
+            let prompt = await interpolatePrompt(supabase, rawLifestyle, product);
+            
+            // Format context details for interpolation helper
+            const details = `Material: ${puData?.detected_material || 'premium'}, Finish: ${puData?.detected_finish || 'premium finish'}, Color: ${puData?.detected_color || 'custom'}, Type: ${puData?.detected_product_type || 'product'}, Style: ${puData?.detected_style || 'modern'}, Setting: ${puData?.detected_installation_context || 'luxury showroom'}, Visuals: ${(puData?.detected_visual_characteristics || []).join(', ') || 'elegant'}`;
+            prompt = prompt.replace(/{product_intelligence}/g, details);
             if (familyOverride) {
-              studioPrompt += `\n\nAdditional Directives: ${familyOverride}`;
-              installedPrompt += `\n\nAdditional Directives: ${familyOverride}`;
+              prompt += `\n\nAdditional Directives: ${familyOverride}`;
             }
-            lastCompiledPrompt = `Studio: ${studioPrompt}\n\nInstalled: ${installedPrompt}`;
+            lastCompiledPrompt = prompt;
 
             const nextVersion = (product.generation_version ?? 0) + 1;
-            const uploadOne = async (label: "studio" | "installed", bytes: Buffer) => {
+            const uploadOne = async (bytes: Buffer) => {
               const cloudName = process.env.CLOUDINARY_CLOUD_NAME || process.env.VITE_CLOUDINARY_CLOUD_NAME;
               const apiKey = process.env.CLOUDINARY_API_KEY;
               const apiSecret = process.env.CLOUDINARY_API_SECRET;
@@ -465,14 +352,8 @@ export const runProductPipeline = createServerFn({ method: "POST" })
               return data.secure_url;
             };
 
-            const [studioBuf, installedBuf] = await Promise.all([
-              provider.generateImage(studioPrompt),
-              provider.generateImage(installedPrompt),
-            ]);
-            const [studioUrl, installedUrl] = await Promise.all([
-              uploadOne("studio", studioBuf),
-              uploadOne("installed", installedBuf),
-            ]);
+            const installedBuf = await provider.generateImage(prompt);
+            const installedUrl = await uploadOne(installedBuf);
 
             // Demote any previously primary generated assets.
             await supabaseAdmin.from("product_assets")
@@ -482,31 +363,100 @@ export const runProductPipeline = createServerFn({ method: "POST" })
 
             await supabaseAdmin.from("product_assets").insert([
               {
-                product_id: productId, asset_type: "studio", asset_url: studioUrl,
-                generated_by_ai: true, is_primary: true,
-                generation_version: nextVersion,
-                metadata: { provider: provider.name, model: provider.config?.openaiImageModel || "dall-e-3", prompt: studioPrompt },
-              },
-              {
                 product_id: productId, asset_type: "installed", asset_url: installedUrl,
-                generated_by_ai: true, is_primary: false,
+                generated_by_ai: true, is_primary: false, // Lifestyle image is secondary
                 generation_version: nextVersion,
-                metadata: { provider: provider.name, model: provider.config?.openaiImageModel || "dall-e-3", prompt: installedPrompt },
+                metadata: { provider: provider.name, prompt: prompt },
               },
             ]);
 
             await supabase.from("products").update({
-              generated_studio_image: studioUrl,
               generated_installed_image: installedUrl,
             } as any).eq("id", productId);
 
             result.mode = "imagen";
-            result.studio = studioUrl;
             result.installed = installedUrl;
           }
-        } else if (jt === "search_index") {
-          await supabase.rpc("rebuild_search_index" as any, { _product_id: productId } as any);
-          result.rebuilt = true;
+        } else if (jt === "search") {
+          const rawPrompt = resolvedTemplates.search_prompt;
+          let prompt = await interpolatePrompt(supabase, rawPrompt, product);
+          prompt = prompt.replace(/{product_intelligence}/g, JSON.stringify(puData || {}, null, 2));
+          lastCompiledPrompt = prompt;
+          const searchJson = await tryJSON<any>(
+            provider,
+            prompt,
+            "You are a search intelligence engine. Output strict JSON."
+          ) ?? {};
+
+          const keywords = [
+            ...(searchJson.search_aliases || []),
+            ...(searchJson.builder_terminology || []),
+            ...(searchJson.designer_terminology || []),
+            ...(searchJson.contractor_terminology || []),
+            ...(searchJson.common_misspellings || []),
+            ...(searchJson.name_variations || []),
+            ...(searchJson.material_terminology || []),
+            ...(searchJson.regional_variations || [])
+          ].filter(Boolean);
+
+          await supabase.from("products").update({
+            app_search_keywords: keywords,
+            app_keywords: keywords
+          } as any).eq("id", productId);
+
+          result.keywords_count = keywords.length;
+        } else if (jt === "recommendation") {
+          const rawPrompt = resolvedTemplates.recommendation_prompt;
+          let prompt = await interpolatePrompt(supabase, rawPrompt, product);
+          prompt = prompt.replace(/{product_intelligence}/g, JSON.stringify(puData || {}, null, 2));
+          lastCompiledPrompt = prompt;
+          const recJson = await tryJSON<any>(
+            provider,
+            prompt,
+            "You are a product recommendation engine. Output strict JSON."
+          ) ?? {};
+
+          await supabase.from("product_understanding").update({
+            recommendation_result: recJson
+          } as any).eq("product_id", productId);
+
+          await supabase.rpc("recompute_similar_products" as any, { _product_id: productId } as any);
+          result.processed = true;
+        } else if (jt === "quality") {
+          const rawPrompt = resolvedTemplates.quality_prompt;
+          let prompt = await interpolatePrompt(supabase, rawPrompt, product);
+          
+          // Get the generated lifestyle image
+          const { data: freshProd } = await supabase.from("products").select("generated_installed_image, image_url").eq("id", productId).single();
+          
+          prompt = prompt
+            .replace(/{product_intelligence}/g, JSON.stringify(puData || {}, null, 2))
+            .replace(/{original_image_url}/g, freshProd?.image_url || "")
+            .replace(/{generated_image_url}/g, freshProd?.generated_installed_image || "");
+          
+          lastCompiledPrompt = prompt;
+          const qualJson = await tryJSON<any>(
+            provider,
+            prompt,
+            "You are a Quality Control validator. Output strict JSON."
+          ) ?? {};
+
+          await supabase.from("product_understanding").update({
+            quality_validation_result: qualJson
+          } as any).eq("product_id", productId);
+
+          result.passes_validation = qualJson.passes_validation ?? true;
+          result.confidence_score = qualJson.confidence_score ?? 100;
+          result.failure_reasons = qualJson.failure_reasons ?? [];
+
+          // If validation fails, transition state to rejected
+          if (qualJson.passes_validation === false) {
+            await supabase.from("products").update({
+              processing_state: "rejected",
+              is_published: false,
+              error_log: { message: "Quality validation failed. Product mutated by AI.", reasons: qualJson.failure_reasons }
+            } as any).eq("id", productId);
+          }
         }
 
         await setJob(job.id, {
@@ -517,7 +467,6 @@ export const runProductPipeline = createServerFn({ method: "POST" })
           error_log: null,
         });
 
-        // Update last provider status in app_settings to success
         if (settings?.id) {
           try {
             await supabase.from("app_settings").update({
@@ -556,7 +505,6 @@ export const runProductPipeline = createServerFn({ method: "POST" })
           retry_count: (job.retry_count ?? 0) + 1,
         });
 
-        // Track last provider status in app_settings database
         if (settings?.id) {
           try {
             await supabase.from("app_settings").update({
@@ -572,8 +520,7 @@ export const runProductPipeline = createServerFn({ method: "POST" })
       }
     };
 
-    // Execute in a resolution order that respects dependencies.
-    const order: JobType[] = ["understanding", "description", "seo", "faq_generation", "image_generation", "search_index"];
+    const order: JobType[] = ["understanding", "seo", "lifestyle", "search", "recommendation", "quality"];
     let anyCriticalFail = false;
     for (const t of order) {
       const j = jobList.find((x) => x.job_type === t && x.status !== "success");
@@ -581,8 +528,9 @@ export const runProductPipeline = createServerFn({ method: "POST" })
       try {
         await runJob(j);
       } catch (err) {
-        if (t === "image_generation") {
-          console.warn("Non-blocking pipeline step 'image_generation' failed. Proceeding with remaining steps.");
+        // Recommend step is not blocking, lifestyle/quality are blocking
+        if (t === "recommendation" || t === "search") {
+          console.warn(`Non-blocking pipeline step '${t}' failed. Proceeding.`);
         } else {
           anyCriticalFail = true;
           break;
@@ -591,33 +539,43 @@ export const runProductPipeline = createServerFn({ method: "POST" })
     }
 
     if (anyCriticalFail) {
-      await supabase.from("products").update({
-        processing_state: "error",
-        error_log: { message: "One or more critical AI jobs failed. See ai_jobs.error_log." },
-        last_processed_at: new Date().toISOString(),
-      } as any).eq("id", productId);
+      // Get the fresh state, don't override rejected
+      const { data: currentP } = await supabase.from("products").select("processing_state").eq("id", productId).single();
+      if (currentP?.processing_state !== "rejected") {
+        await supabase.from("products").update({
+          processing_state: "error",
+          error_log: { message: "One or more critical AI jobs failed. See ai_jobs.error_log." },
+          last_processed_at: new Date().toISOString(),
+        } as any).eq("id", productId);
+      }
       return { ok: false as const };
     }
 
-    // Metadata sync — always rebuild search_index at the end + snapshot version.
-    await supabase.rpc("rebuild_search_index" as any, { _product_id: productId } as any);
+    // Check if the product was rejected
     const { data: fresh } = await supabase.from("products").select("*").eq("id", productId).maybeSingle();
-    await supabase.from("generation_versions" as any).insert({
-      product_id: productId,
-      version: (fresh?.generation_version ?? 0) + 1,
-      snapshot: fresh,
-    });
-    await supabase.from("products").update({
-      processing_state: "completed",
-      generation_version: (fresh?.generation_version ?? 0) + 1,
-      last_processed_at: new Date().toISOString(),
-      error_log: null,
-      master_document: {
-        name: fresh?.name, brand: fresh?.brand, finish: fresh?.finish,
-        seo_title: fresh?.seo_title, seo_description: fresh?.seo_description,
-        description: fresh?.generated_description, faq: fresh?.faq,
-      },
-    } as any).eq("id", productId);
+    if (fresh?.processing_state !== "rejected") {
+      await supabase.rpc("rebuild_search_index" as any, { _product_id: productId } as any);
+      const { data: freshAfterSearch } = await supabase.from("products").select("*").eq("id", productId).maybeSingle();
+      
+      await supabase.from("generation_versions" as any).insert({
+        product_id: productId,
+        version: (freshAfterSearch?.generation_version ?? 0) + 1,
+        snapshot: freshAfterSearch,
+      });
+
+      await supabase.from("products").update({
+        processing_state: "completed",
+        is_published: true, // Auto publish on success
+        generation_version: (freshAfterSearch?.generation_version ?? 0) + 1,
+        last_processed_at: new Date().toISOString(),
+        error_log: null,
+        master_document: {
+          name: freshAfterSearch?.name, brand: freshAfterSearch?.brand, finish: freshAfterSearch?.finish,
+          seo_title: freshAfterSearch?.seo_title, seo_description: freshAfterSearch?.seo_description,
+          description: freshAfterSearch?.generated_description, faq: freshAfterSearch?.faq,
+        },
+      } as any).eq("id", productId);
+    }
 
     return { ok: true as const };
   });

@@ -1,15 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import React, { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { RefreshCw, Play, AlertTriangle, CheckCircle2, Clock, Archive } from "lucide-react";
-import { retryJob, retryProductPipeline, regenerateWithHashGuard } from "@/lib/pipeline";
 import { publicImageUrl } from "@/components/ImageUploader";
 import { useServerFn } from "@tanstack/react-start";
 import { runProductPipeline } from "@/lib/ai-pipeline.functions";
+import { regenerateWithHashGuard, retryProductPipeline } from "@/lib/pipeline";
 
 export const Route = createFileRoute("/_authenticated/admin/pipeline")({
-  head: () => ({ meta: [{ title: "Product Pipeline — Admin" }] }),
+  head: () => ({ meta: [{ title: "AI Operations Dashboard — Admin" }] }),
   component: PipelinePage,
 });
 
@@ -23,8 +23,6 @@ function PipelinePage() {
   const [counts, setCounts] = useState<Record<Bucket, number>>({
     pending: 0, processing: 0, completed: 0, error: 0, archived: 0,
   });
-  const [expanded, setExpanded] = useState<string | null>(null);
-  const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   const loadCounts = useCallback(async () => {
@@ -53,25 +51,14 @@ function PipelinePage() {
     setRows(data ?? []);
   }, [bucket]);
 
-  const loadJobs = async (productId: string) => {
-    const { data } = await supabase
-      .from("ai_jobs" as any)
-      .select("*")
-      .eq("product_id", productId)
-      .order("created_at", { ascending: true });
-    setJobs((data ?? []) as any[]);
-  };
-
   useEffect(() => { loadCounts(); }, [loadCounts]);
   useEffect(() => { loadRows(); }, [loadRows]);
-  useEffect(() => { if (expanded) loadJobs(expanded); }, [expanded]);
 
   const handleRetryProduct = async (productId: string) => {
     try {
       await retryProductPipeline(productId);
-      toast.success("Pipeline re-queued");
+      toast.success("Pipeline re-queued to pending");
       await loadRows(); await loadCounts();
-      if (expanded === productId) await loadJobs(productId);
     } catch (e: any) { toast.error(e.message ?? "Retry failed"); }
   };
 
@@ -79,16 +66,18 @@ function PipelinePage() {
     setRunning(productId);
     try {
       const res = await runPipeline({ data: { productId } });
-      if (res.ok) toast.success("Pipeline completed"); else toast.error("Pipeline failed — see jobs");
+      if (res.ok) {
+        toast.success("Pipeline completed successfully!");
+      } else {
+        toast.error(`Pipeline failed: ${res.error || "See error log"}`);
+      }
     } catch (e: any) {
       toast.error(e.message ?? "Run failed");
     } finally {
       setRunning(null);
       await loadRows(); await loadCounts();
-      if (expanded === productId) await loadJobs(productId);
     }
   };
-
 
   const handleRegenerate = async (productId: string) => {
     try {
@@ -97,7 +86,7 @@ function PipelinePage() {
         if (!confirm(res.reason + "\n\nRegenerate anyway?")) return;
         await regenerateWithHashGuard(productId, { force: true });
       }
-      toast.success("Regeneration queued");
+      toast.success("Regeneration queued successfully");
       await loadRows(); await loadCounts();
     } catch (e: any) { toast.error(e.message ?? "Failed"); }
   };
@@ -123,14 +112,6 @@ function PipelinePage() {
     await loadRows(); await loadCounts();
   };
 
-  const handleRetryJob = async (jobId: string, productId: string) => {
-    try {
-      await retryJob(jobId);
-      toast.success("Job re-queued");
-      await loadJobs(productId);
-    } catch (e: any) { toast.error(e.message ?? "Retry failed"); }
-  };
-
   const buckets: { key: Bucket; label: string; icon: any; color: string }[] = [
     { key: "processing", label: "Processing", icon: RefreshCw, color: "text-blue-500" },
     { key: "pending", label: "Pending", icon: Clock, color: "text-amber-500" },
@@ -140,11 +121,11 @@ function PipelinePage() {
   ];
 
   return (
-    <div className="container-app py-6 space-y-6">
-      <div>
-        <h1 className="font-display text-2xl font-semibold">Product Pipeline Dashboard</h1>
-        <p className="text-sm text-muted-foreground">
-          Live view of the AI processing state machine. Retry, regenerate, archive.
+    <div className="container-app py-6 space-y-6 max-w-5xl">
+      <div className="border-b border-border pb-5">
+        <h1 className="font-display text-2xl font-bold tracking-tight">AI Operations Dashboard</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Monitor jobs, failures, and regenerate or retry processes on the Universal AI Operating System.
         </p>
       </div>
 
@@ -153,237 +134,114 @@ function PipelinePage() {
           <button
             key={b.key}
             onClick={() => setBucket(b.key)}
-            className={`rounded-xl border p-4 text-left transition ${
-              bucket === b.key ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40"
+            className={`rounded-xl border p-4 text-left transition cursor-pointer select-none ${
+              bucket === b.key ? "border-primary bg-primary/5 font-semibold" : "border-border bg-card hover:border-primary/40 text-muted-foreground"
             }`}
           >
             <div className={`flex items-center gap-2 text-xs uppercase tracking-wider ${b.color}`}>
               <b.icon className="h-3.5 w-3.5" /> {b.label}
             </div>
-            <div className="mt-1 text-2xl font-semibold">{counts[b.key]}</div>
+            <div className="mt-2 text-2xl font-bold text-foreground">{counts[b.key]}</div>
           </button>
         ))}
       </div>
 
-      <div className="rounded-xl border border-border bg-card">
+      <div className="rounded-xl border border-border bg-card shadow-sm">
         <div className="flex items-center justify-between border-b border-border p-4">
-          <h2 className="font-display font-semibold capitalize">{bucket} products</h2>
+          <h2 className="font-display font-semibold capitalize text-base">{bucket} products</h2>
           <button
-            onClick={() => { loadRows(); loadCounts(); }}
-            className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1 text-xs hover:border-primary"
+            onClick={() => { void loadRows(); void loadCounts(); }}
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs hover:border-primary cursor-pointer transition"
           >
             <RefreshCw className="h-3 w-3" /> Refresh
           </button>
         </div>
         {loading ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">Loading…</div>
+          <div className="p-8 text-center text-sm text-muted-foreground">Loading products list...</div>
         ) : rows.length === 0 ? (
-          <div className="p-8 text-center text-sm text-muted-foreground">No products in this bucket.</div>
+          <div className="p-8 text-center text-sm text-muted-foreground">No products found in this category.</div>
         ) : (
           <ul className="divide-y divide-border">
             {rows.map((p) => (
-              <li key={p.id} className="p-4">
-                <div className="flex flex-wrap items-start gap-3">
+              <li key={p.id} className="p-4 hover:bg-muted/10 transition">
+                <div className="flex flex-wrap items-start gap-4">
                   {publicImageUrl(p.image_url) ? (
-                    <img src={publicImageUrl(p.image_url)!} alt="" className="h-14 w-14 rounded border border-border object-cover" />
-
+                    <img src={publicImageUrl(p.image_url)!} alt="" className="h-16 w-16 rounded border border-border object-cover bg-muted" />
                   ) : (
-                    <div className="h-14 w-14 rounded border border-dashed border-border" />
+                    <div className="h-16 w-16 rounded border border-dashed border-border bg-muted flex items-center justify-center text-xs text-muted-foreground">No image</div>
                   )}
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 space-y-1">
                     <Link
                       to="/admin/products/$id"
                       params={{ id: p.id }}
-                      className="block truncate font-medium hover:text-primary"
+                      className="block truncate font-semibold hover:text-primary text-sm"
                     >
                       {p.name}
                     </Link>
-                    <div className="text-xs text-muted-foreground">
-                      <span className="font-mono">{p.code}</span> · v{p.generation_version} · retries: {p.retry_count}
-                      {p.last_processed_at && ` · last ${new Date(p.last_processed_at).toLocaleString()}`}
+                    <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="font-mono bg-muted border border-border px-1.5 py-0.5 rounded text-[10px]">{p.code}</span>
+                      <span>·</span>
+                      <span>v{p.generation_version ?? 0}</span>
+                      <span>·</span>
+                      <span>Retries: {p.retry_count ?? 0}</span>
+                      {p.last_processed_at && (
+                        <>
+                          <span>·</span>
+                          <span>Last active: {new Date(p.last_processed_at).toLocaleString()}</span>
+                        </>
+                      )}
                     </div>
                     {p.error_log && (
-                      <pre className="mt-1 max-h-24 overflow-auto rounded bg-destructive/10 p-2 text-[11px] text-destructive">
-                        {typeof p.error_log === "string" ? p.error_log : JSON.stringify(p.error_log, null, 2)}
-                      </pre>
+                      <div className="mt-2 rounded-lg bg-destructive/5 border border-destructive/10 p-3">
+                        <div className="text-[11px] font-mono text-destructive break-all whitespace-pre-wrap max-h-32 overflow-y-auto">
+                          {typeof p.error_log === "string" ? p.error_log : JSON.stringify(p.error_log, null, 2)}
+                        </div>
+                      </div>
                     )}
                   </div>
-                  <div className="flex flex-wrap gap-1">
-                    <button
-                      onClick={() => setExpanded(expanded === p.id ? null : p.id)}
-                      className="rounded-md border border-border px-2 py-1 text-xs hover:border-primary"
-                    >
-                      {expanded === p.id ? "Hide jobs" : "View jobs"}
-                    </button>
+                  <div className="flex flex-wrap gap-2 pt-1 sm:pt-0">
                     {(bucket === "pending" || bucket === "processing" || bucket === "error") && (
                       <button
                         disabled={running === p.id}
-                        onClick={() => handleRunNow(p.id)}
-                        className="inline-flex items-center gap-1 rounded-md border border-primary bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                        onClick={() => void handleRunNow(p.id)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-primary bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/95 disabled:opacity-50 cursor-pointer shadow-sm"
                       >
                         <Play className="h-3 w-3" /> {running === p.id ? "Running…" : "Run now"}
                       </button>
                     )}
                     {bucket === "error" && (
                       <button
-                        onClick={() => handleRetryProduct(p.id)}
-                        className="inline-flex items-center gap-1 rounded-md border border-primary/40 px-2 py-1 text-xs text-primary hover:bg-primary/10"
+                        onClick={() => void handleRetryProduct(p.id)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted cursor-pointer"
                       >
-                        <Play className="h-3 w-3" /> Retry
+                        <RefreshCw className="h-3 w-3" /> Retry Pipeline
                       </button>
                     )}
                     {bucket === "completed" && (
                       <button
-                        onClick={() => handleRegenerate(p.id)}
-                        className="inline-flex items-center gap-1 rounded-md border border-primary/40 px-2 py-1 text-xs text-primary hover:bg-primary/10"
+                        onClick={() => void handleRegenerate(p.id)}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted cursor-pointer"
                       >
                         <RefreshCw className="h-3 w-3" /> Regenerate
                       </button>
                     )}
                     {bucket !== "archived" ? (
                       <button
-                        onClick={() => handleArchive(p.id)}
-                        className="rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+                        onClick={() => void handleArchive(p.id)}
+                        className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer"
                       >
                         Archive
                       </button>
                     ) : (
                       <button
-                        onClick={() => handleUnarchive(p.id)}
-                        className="rounded-md border border-border px-2 py-1 text-xs hover:border-primary"
+                        onClick={() => void handleUnarchive(p.id)}
+                        className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted cursor-pointer"
                       >
-                        Restore
+                        Restore to Draft
                       </button>
                     )}
                   </div>
                 </div>
-
-                {expanded === p.id && (
-                  <div className="mt-3 rounded-lg border border-border bg-background p-3">
-                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      AI Jobs ({jobs.length})
-                    </h3>
-                    {jobs.length === 0 ? (
-                      <div className="text-xs text-muted-foreground">
-                        No jobs yet. <button onClick={() => handleRetryProduct(p.id)} className="text-primary hover:underline">Enqueue pipeline</button>
-                      </div>
-                    ) : (
-                      <table className="w-full text-xs">
-                        <thead className="text-left text-muted-foreground">
-                          <tr>
-                            <th className="py-1 pr-2">Step</th>
-                            <th className="py-1 pr-2">Depends On</th>
-                            <th className="py-1 pr-2">Status</th>
-                            <th className="py-1 pr-2">Attempts</th>
-                            <th className="py-1 pr-2">Updated</th>
-                            <th className="py-1 pr-2">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border">
-                          {jobs.map((j) => (
-                            <React.Fragment key={j.id}>
-                              <tr>
-                                <td className="py-1.5 pr-2 font-mono">{j.job_type}</td>
-                                <td className="py-1.5 pr-2 text-muted-foreground">{j.job_dependency ?? "—"}</td>
-                                <td className="py-1.5 pr-2">
-                                  <span className={`rounded px-1.5 py-0.5 text-[10px] uppercase ${
-                                    j.status === "success" ? "bg-primary/10 text-primary" :
-                                    j.status === "failed" ? "bg-destructive/10 text-destructive" :
-                                    j.status === "processing" ? "bg-blue-500/10 text-blue-500" :
-                                    "bg-muted text-muted-foreground"
-                                  }`}>{j.status}</span>
-                                </td>
-                                <td className="py-1.5 pr-2">{j.attempts}</td>
-                                <td className="py-1.5 pr-2 text-muted-foreground">
-                                  {new Date(j.updated_at).toLocaleTimeString()}
-                                </td>
-                                <td className="py-1.5 pr-2">
-                                  {(j.status === "failed" || j.status === "pending") && (
-                                    <button
-                                      onClick={() => handleRetryJob(j.id, p.id)}
-                                      className="text-primary hover:underline"
-                                    >
-                                      Retry
-                                    </button>
-                                  )}
-                                </td>
-                              </tr>
-                              {j.status === "failed" && j.error_log && (
-                                <tr>
-                                  <td colSpan={6} className="py-2 pl-4 pr-2 bg-destructive/5 rounded-md border border-destructive/10">
-                                    <div className="space-y-1.5 text-[11px] text-destructive-foreground/80">
-                                      <div className="text-destructive font-semibold">
-                                        Error: {typeof j.error_log === "string" ? j.error_log : j.error_log.message || JSON.stringify(j.error_log)}
-                                      </div>
-                                      {j.error_log.provider && (
-                                        <div className="text-muted-foreground">
-                                          <strong>AI Provider:</strong> <span className="uppercase font-bold">{j.error_log.provider}</span> ({j.error_log.model})
-                                        </div>
-                                      )}
-                                      {j.error_log.cloudinary_url && (
-                                        <div className="text-muted-foreground">
-                                          <strong>Cloudinary Image:</strong>{" "}
-                                          <a href={j.error_log.cloudinary_url} target="_blank" rel="noopener noreferrer" className="underline text-primary hover:text-primary/80">
-                                            {j.error_log.cloudinary_url}
-                                          </a>
-                                        </div>
-                                      )}
-                                      {j.error_log.endpoint_url && (
-                                        <div className="text-muted-foreground font-mono text-[10px] break-all bg-background/50 p-1.5 rounded border border-border">
-                                          <strong>HTTP Request:</strong> POST {j.error_log.endpoint_url} {j.error_log.status !== undefined && `(Status: ${j.error_log.status})`}
-                                        </div>
-                                      )}
-                                      {j.error_log.request_headers && (
-                                        <details className="mt-1 cursor-pointer">
-                                          <summary className="font-semibold text-muted-foreground hover:text-foreground hover:underline">Show Request Headers</summary>
-                                          <pre className="mt-1 max-h-32 overflow-auto rounded bg-background border border-border p-2 text-[10px] text-muted-foreground whitespace-pre-wrap font-mono">
-                                            {JSON.stringify(j.error_log.request_headers, null, 2)}
-                                          </pre>
-                                        </details>
-                                      )}
-                                      {j.error_log.request_body && (
-                                        <details className="mt-1 cursor-pointer">
-                                          <summary className="font-semibold text-muted-foreground hover:text-foreground hover:underline">Show Request Body JSON</summary>
-                                          <pre className="mt-1 max-h-32 overflow-auto rounded bg-background border border-border p-2 text-[10px] text-muted-foreground whitespace-pre-wrap font-mono">
-                                            {JSON.stringify(j.error_log.request_body, null, 2)}
-                                          </pre>
-                                        </details>
-                                      )}
-                                      {j.error_log.response_body && (
-                                        <details className="mt-1 cursor-pointer" open>
-                                          <summary className="font-semibold text-destructive hover:underline">Show Raw Response Body</summary>
-                                          <pre className="mt-1 max-h-48 overflow-auto rounded bg-background border border-destructive/20 p-2 text-[10px] text-destructive whitespace-pre-wrap font-mono">
-                                            {j.error_log.response_body}
-                                          </pre>
-                                        </details>
-                                      )}
-                                      {j.error_log.prompt && (
-                                        <details className="mt-1 cursor-pointer">
-                                          <summary className="font-semibold text-primary hover:underline">Show Final Compiled Prompt Sent</summary>
-                                          <pre className="mt-1 max-h-32 overflow-auto rounded bg-background border border-border p-2 text-[10px] text-muted-foreground whitespace-pre-wrap font-mono">
-                                            {j.error_log.prompt}
-                                          </pre>
-                                        </details>
-                                      )}
-                                      {j.error_log.stack && (
-                                        <details className="cursor-pointer mt-1">
-                                          <summary className="font-semibold text-muted-foreground hover:text-foreground hover:underline">Show Stack Trace</summary>
-                                          <pre className="mt-1 max-h-32 overflow-auto rounded bg-background border border-border p-2 text-[10px] text-muted-foreground whitespace-pre-wrap font-mono">
-                                            {j.error_log.stack}
-                                          </pre>
-                                        </details>
-                                      )}
-                                    </div>
-                                  </td>
-                                </tr>
-                              )}
-                            </React.Fragment>
-                          ))}
-                        </tbody>
-                      </table>
-                    )}
-                  </div>
-                )}
               </li>
             ))}
           </ul>
