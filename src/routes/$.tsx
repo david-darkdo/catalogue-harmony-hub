@@ -56,7 +56,7 @@ const hierarchyQuery = (splat: string, origin: string) =>
 
       // 3. Resolve Subcategory if provided
       let subcategory = null;
-      if (subcategorySlug && subcategorySlug !== "all" && subcategorySlug !== "default") {
+      if (category && subcategorySlug && subcategorySlug !== "all" && subcategorySlug !== "default") {
         const { data: sub } = await supabase
           .from("subcategories")
           .select("id, name, slug, category_id")
@@ -72,7 +72,7 @@ const hierarchyQuery = (splat: string, origin: string) =>
       if (familySlug) {
         const { data: fam } = await supabase
           .from("family_groups")
-          .select("id, name, slug, subcategory_id, category_id, custom_ai_prompt_override")
+          .select("id, name, slug, subcategory_id, custom_ai_prompt_override")
           .eq("slug", familySlug)
           .maybeSingle();
         if (!fam) throw notFound();
@@ -120,8 +120,7 @@ const hierarchyQuery = (splat: string, origin: string) =>
           .order("name");
         childSubcategories = subs ?? [];
 
-        const { data: fams } = await supabase
-          .from("family_groups")
+        const { data: fams } = await (supabase.from("family_groups") as any)
           .select("id, name, slug")
           .eq("category_id", category.id)
           .order("name");
@@ -152,10 +151,10 @@ const hierarchyQuery = (splat: string, origin: string) =>
 export const Route = createFileRoute("/$")({
   loader: async ({ context, params }) => {
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://showroom.enreach.concepts';
-    const data = await context.queryClient.ensureQueryData(hierarchyQuery(params._splat, origin));
+    const data = await context.queryClient.ensureQueryData(hierarchyQuery(params._splat ?? "", origin));
     return data;
   },
-  head: ({ loaderData }) => {
+  head: ({ loaderData }: any): any => {
     if (!loaderData) return {};
     const { type, category, subcategory, family, origin } = loaderData;
 

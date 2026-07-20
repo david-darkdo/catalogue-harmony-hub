@@ -12,6 +12,7 @@ export interface AIProvider {
   name: string;
   callLLM(prompt: string, systemPrompt: string): Promise<string>;
   generateImage(prompt: string): Promise<Buffer>;
+  generateLifestyleImage(prompt: string, originalImageBuffer?: Buffer): Promise<Buffer>;
 }
 
 export class AIProviderError extends Error {
@@ -144,6 +145,10 @@ export class GeminiProvider implements AIProvider {
     }
 
     return textOut;
+  }
+
+  async generateLifestyleImage(prompt: string, originalImageBuffer?: Buffer): Promise<Buffer> {
+    return this.generateImage(prompt);
   }
 
   async generateImage(prompt: string): Promise<Buffer> {
@@ -323,6 +328,10 @@ export class OpenAIProvider implements AIProvider {
     }
 
     return json?.choices?.[0]?.message?.content ?? "";
+  }
+
+  async generateLifestyleImage(prompt: string, originalImageBuffer?: Buffer): Promise<Buffer> {
+    return this.generateImage(prompt);
   }
 
   async generateImage(prompt: string): Promise<Buffer> {

@@ -115,7 +115,7 @@ export class CommunicationEventBus {
   private async triggerWorkflows(eventType: string, userId: string, meta: Record<string, any>): Promise<void> {
     // 1. Fetch active workflows registered for this trigger event type
     const { data: workflows, error: wfError } = await supabase
-      .from('automation_workflows')
+      .from('automation_workflows' as any)
       .select(`
         id,
         name,
@@ -135,12 +135,12 @@ export class CommunicationEventBus {
       return;
     }
 
-    for (const wf of workflows) {
+    for (const wf of (workflows as any[])) {
       console.log(`[EventBus] Triggering workflow "${wf.name}" for user ${userId}`);
 
       // Check if user is already running this workflow
       const { data: activeRuns } = await supabase
-        .from('automation_runs')
+        .from('automation_runs' as any)
         .select('id')
         .eq('workflow_id', wf.id)
         .eq('user_id', userId)
@@ -162,7 +162,7 @@ export class CommunicationEventBus {
 
       // Start the workflow run
       const { data: run, error: runError } = await supabase
-        .from('automation_runs')
+        .from('automation_runs' as any)
         .insert({
           workflow_id: wf.id,
           user_id: userId,
@@ -181,7 +181,7 @@ export class CommunicationEventBus {
 
       // Queue step action immediately if wait duration is zero
       if (firstStep.wait_duration_seconds === 0) {
-        await this.executeWorkflowStep(run.id, firstStep, userId);
+        await this.executeWorkflowStep((run as any)?.id, firstStep, userId);
       }
     }
   }
@@ -267,7 +267,7 @@ export class CommunicationEventBus {
       }
 
       // Update run status to COMPLETED since it was a single-step workflow
-      await supabase
+      await (supabase as any)
         .from('automation_runs')
         .update({
           status: 'COMPLETED',

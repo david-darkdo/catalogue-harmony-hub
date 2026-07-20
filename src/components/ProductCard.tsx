@@ -74,12 +74,13 @@ export function ProductCard({ product }: { product: ProductRow }) {
 
   // Determine if product is recently published (newer than 7 days)
   const isNew = useMemo(() => {
-    if (!product.created_at) return false;
-    const createdDate = new Date(product.created_at);
+    const createdAt = (product as any).created_at;
+    if (!createdAt) return false;
+    const createdDate = new Date(createdAt);
     const diffTime = Math.abs(new Date().getTime() - createdDate.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays <= 7;
-  }, [product.created_at]);
+  }, [(product as any).created_at]);
 
   const toggleFavorite = async (e: React.MouseEvent) => {
     e.preventDefault();

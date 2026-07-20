@@ -205,7 +205,7 @@ export async function getRecommendations(userId: string | null, limit: number = 
     
     // Sort and limit
     const { data: products } = await query
-      .eq('publish_status', 'published')
+      .eq('status', 'published')
       .limit(limit);
 
     if (products && products.length > 0) {
@@ -216,7 +216,7 @@ export async function getRecommendations(userId: string | null, limit: number = 
     const { data: fallback } = await supabase
       .from('products')
       .select('*')
-      .eq('publish_status', 'published')
+      .eq('status', 'published')
       .limit(limit);
 
     return fallback || [];

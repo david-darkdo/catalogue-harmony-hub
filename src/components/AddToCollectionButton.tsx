@@ -31,9 +31,9 @@ export function AddToCollectionButton({
     const refresh = async () => {
       if (user) {
         const { items } = await getUserCollectionItems(user.id);
-        if (!cancelled) setSaved(items.some((i) => i.product_id === productId));
+        if (!cancelled) setSaved(items.some((i: any) => i.product_id === productId));
       } else {
-        setSaved(getGuestCollection().some((i) => i.product_id === productId));
+        setSaved(getGuestCollection().some((i: any) => i.product_id === productId));
       }
     };
     refresh();
