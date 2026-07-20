@@ -13,7 +13,7 @@ export const Route = createFileRoute("/_authenticated/admin/pipeline")({
   component: PipelinePage,
 });
 
-type Bucket = "pending" | "processing" | "completed" | "error" | "archived";
+type Bucket = "pending" | "processing" | "completed" | "needs_review" | "error" | "archived";
 
 function PipelinePage() {
   const runPipeline = useServerFn(runProductPipeline);
@@ -26,8 +26,8 @@ function PipelinePage() {
   const [loading, setLoading] = useState(false);
 
   const loadCounts = useCallback(async () => {
-    const states: Bucket[] = ["pending", "processing", "completed", "error", "archived"];
-    const next: Record<Bucket, number> = { pending: 0, processing: 0, completed: 0, error: 0, archived: 0 };
+    const states: Bucket[] = ["pending", "processing", "completed", "needs_review", "error", "archived"];
+    const next: Record<Bucket, number> = { pending: 0, processing: 0, completed: 0, needs_review: 0, error: 0, archived: 0 };
     for (const s of states) {
       const { count } = await supabase
         .from("products")
