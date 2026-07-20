@@ -21,7 +21,7 @@ function PipelinePage() {
   const [bucket, setBucket] = useState<Bucket>("processing");
   const [rows, setRows] = useState<any[]>([]);
   const [counts, setCounts] = useState<Record<Bucket, number>>({
-    pending: 0, processing: 0, completed: 0, error: 0, archived: 0,
+    pending: 0, processing: 0, completed: 0, needs_review: 0, error: 0, archived: 0,
   });
   const [loading, setLoading] = useState(false);
 
@@ -32,7 +32,7 @@ function PipelinePage() {
       const { count } = await supabase
         .from("products")
         .select("id", { count: "exact", head: true })
-        .eq("processing_state", s);
+        .eq("processing_state", s as any);
       next[s] = count ?? 0;
     }
     setCounts(next);
@@ -43,7 +43,7 @@ function PipelinePage() {
     const { data, error } = await supabase
       .from("products")
       .select("id,name,code,status,processing_state,retry_count,error_log,generation_version,last_processed_at,image_url,generation_hash")
-      .eq("processing_state", bucket)
+      .eq("processing_state", bucket as any)
       .order("last_processed_at", { ascending: false, nullsFirst: false })
       .limit(100);
     setLoading(false);
