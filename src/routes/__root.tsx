@@ -237,9 +237,9 @@ function RootAppWrapper() {
   const orgSchema = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    "name": settings?.company_name || "Enreach Concepts",
+    "name": (settings as any)?.company_name || "Enreach Concepts",
     "url": typeof window !== "undefined" ? window.location.origin : "https://enreachconcepts.com",
-    "logo": settings?.company_logo || (typeof window !== "undefined" ? `${window.location.origin}/logo.png` : "https://enreachconcepts.com/logo.png"),
+    "logo": (settings as any)?.company_logo || (typeof window !== "undefined" ? `${window.location.origin}/logo.png` : "https://enreachconcepts.com/logo.png"),
     "contactPoint": {
       "@type": "ContactPoint",
       "telephone": settings?.support_whatsapp || "",

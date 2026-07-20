@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { getAIConfigDetails, testLLMConnection, testImageConnection, updateAISettings, getDiscoveryHealthDetails, rebuildAllSearchIndexes } from "@/lib/ai-pipeline.functions";
 import { toast } from "sonner";
-import { Activity, Sparkles, AlertCircle, CheckCircle, RefreshCw, Server, Shield, Send, Image as ImageIcon, Check, Save, FileText, Globe, CheckSquare, RefreshSlide } from "lucide-react";
+import { Activity, Sparkles, AlertCircle, CheckCircle, RefreshCw, Server, Shield, Send, Image as ImageIcon, Check, Save, FileText, Globe, CheckSquare,  } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/diagnostics")({
   head: () => ({ meta: [{ title: "AI & Discovery Diagnostics — Admin" }] }),
@@ -340,7 +340,7 @@ function DiagnosticsPage() {
     }
   }, []);
 
-  const toggleChecklistItem = (id) => {
+  const toggleChecklistItem = (id: any) => {
     const updated = checklist.map(item => item.id === id ? { ...item, done: !item.done } : item);
     setChecklist(updated);
     localStorage.setItem("stoneworks.launch_checklist", JSON.stringify(updated));

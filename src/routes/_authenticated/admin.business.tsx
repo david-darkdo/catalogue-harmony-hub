@@ -142,7 +142,7 @@ function BusinessOpsPage() {
           details
         });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Audit logging error:", err);
     }
   };
@@ -184,8 +184,8 @@ function BusinessOpsPage() {
           user_name: pmap[c.user_id]?.full_name ?? null,
         }))
       );
-      setVideos((vids ?? []) as HeroVideo[]);
-      setTrusts((trs ?? []) as TrustFeature[]);
+      setVideos((vids ?? []) as any);
+      setTrusts((trs ?? []) as any);
       setLoaded(true);
     } catch (err: any) {
       toast.error(err.message);

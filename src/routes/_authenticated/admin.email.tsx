@@ -105,7 +105,7 @@ function CommunicationCenterPage() {
         ai_generation_metadata: editingCampaign.ai_generation_metadata || {}
       };
 
-      if (editingCampaign.id) {
+      if (editingCampaign?.id) {
         const { error } = await supabase.from("communication_campaigns" as any).update(payload).eq("id", editingCampaign.id);
         if (error) throw error;
       } else {
@@ -191,7 +191,7 @@ function CommunicationCenterPage() {
         
         // Fetch current version count
         const { data: hist } = await supabase.from("communication_templates_history" as any).select("version").eq("template_id", editingTemplate.id).order("version", { ascending: false }).limit(1);
-        const nextVersion = hist && hist.length > 0 ? hist[0].version + 1 : 1;
+        const nextVersion = hist && hist.length > 0 ? hist[0]?.version + 1 : 1;
 
         await supabase.from("communication_templates_history" as any).insert({
           template_id: editingTemplate.id,
@@ -719,7 +719,7 @@ function CommunicationCenterPage() {
                   </div>
                   <p className="text-muted-foreground text-[11px]">{t.description}</p>
                   <div className="flex flex-wrap gap-1.5 mt-1">
-                    {t.variables?.map((v) => (
+                    {t.variables?.map((v: any) => (
                       <span key={v} className="font-mono bg-muted text-[10px] px-1.5 py-0.5 rounded text-muted-foreground">{"{{" + v + "}}"}</span>
                     ))}
                   </div>
