@@ -6,6 +6,7 @@ import { Check, Sparkles, Upload, FileText, Globe } from "lucide-react";
 import { enqueueAiPipeline } from "@/lib/pipeline";
 import { runProductPipeline } from "@/lib/ai-pipeline.functions";
 import { runProductDetailsEngine } from "@/lib/product-details.functions";
+import { generateStandaloneLifestyleImage } from "@/lib/lifestyle-image.functions";
 import { ImageUploader, ImageTile, publicImageUrl, deleteStorageObject } from "@/components/ImageUploader";
 
 export const Route = createFileRoute("/_authenticated/admin/products/new")({
@@ -34,6 +35,8 @@ function UnifiedNewProductPage() {
   const [previewCode, setPreviewCode] = useState("");
   const [saving, setSaving] = useState(false);
   const [isAiMode, setIsAiMode] = useState(true);
+  const [generatingDetails, setGeneratingDetails] = useState(false);
+  const [generatingLifestyle, setGeneratingLifestyle] = useState(false);
 
   // Uploaded media paths
   const [originalPath, setOriginalPath] = useState<string | null>(null);
@@ -86,6 +89,108 @@ function UnifiedNewProductPage() {
   const filteredCats = useMemo(() => cats.filter((c) => c.type_id === type_id), [cats, type_id]);
   const filteredSubs = useMemo(() => subs.filter((s) => s.category_id === category_id), [subs, category_id]);
   const filteredFams = useMemo(() => fams.filter((f) => f.subcategory_id === subcategory_id), [fams, subcategory_id]);
+
+  const handleGenerateDetailsOnNew = async () => {
+    if (!form.name.trim()) {
+      toast.error("Please enter a Product Name first before generating details.");
+      return;
+    }
+    setGeneratingDetails(true);
+    try {
+      // Create a temporary draft product so runProductDetailsEngine can execute
+      const slugBase = form.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      const tempSlug = `draft-${slugBase}-${Math.random().toString(36).slice(2, 6)}`;
+      
+      const { data: tempProduct, error: tempErr } = await supabase.from("products").insert({
+        name: form.name.trim(),
+        code: form.code || previewCode || "TEMP-001",
+        type_id: type_id || null,
+        category_id: category_id || null,
+        subcategory_id: subcategory_id || null,
+        family_id: family_id || null,
+        production_name: form.production_name || null,
+        finish_name: form.finish_name || null,
+        brand: form.brand || null,
+        size: form.size || null,
+        price: Number(form.price) || 0,
+        status: "draft",
+        processing_state: "pending",
+        slug: tempSlug,
+        image_url: originalPath || null
+      } as any).select("id").single();
+
+      if (tempErr || !tempProduct?.id) {
+        throw new Error(tempErr?.message || "Failed to create temporary product draft");
+      }
+
+      const res = await runProductDetailsEngine({ data: { productId: tempProduct.id } });
+      if (res.ok && res.details) {
+        const d = res.details;
+        setForm((prev) => ({
+          ...prev,
+          description: d.short_description || d.generated_description || prev.description,
+          seo_title: d.seo_title || prev.seo_title,
+          seo_description: d.seo_description || prev.seo_description,
+          seo_keywords: Array.isArray(d.seo_keywords) ? d.seo_keywords.join(", ") : (d.seo_keywords || prev.seo_keywords)
+        }));
+        toast.success("Product details generated and filled into form fields!");
+      }
+      // Clean up temp product
+      await supabase.from("products").delete().eq("id", tempProduct.id);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to generate product details");
+    } finally {
+      setGeneratingDetails(false);
+    }
+  };
+
+  const handleGenerateLifestyleOnNew = async () => {
+    if (!originalPath) {
+      toast.error("Please upload an Original Product Image first.");
+      return;
+    }
+    setGeneratingLifestyle(true);
+    try {
+      const slugBase = (form.name || "installed").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+      const tempSlug = `draft-img-${slugBase}-${Math.random().toString(36).slice(2, 6)}`;
+
+      const { data: tempProduct, error: tempErr } = await supabase.from("products").insert({
+        name: form.name.trim() || "Sample Product",
+        code: form.code || previewCode || "TEMP-002",
+        type_id: type_id || null,
+        category_id: category_id || null,
+        subcategory_id: subcategory_id || null,
+        family_id: family_id || null,
+        production_name: form.production_name || null,
+        finish_name: form.finish_name || null,
+        brand: form.brand || null,
+        size: form.size || null,
+        price: Number(form.price) || 0,
+        status: "draft",
+        processing_state: "pending",
+        slug: tempSlug,
+        image_url: originalPath
+      } as any).select("id").single();
+
+      if (tempErr || !tempProduct?.id) {
+        throw new Error(tempErr?.message || "Failed to create draft for lifestyle generation");
+      }
+
+      const res = await generateStandaloneLifestyleImage({ data: { productId: tempProduct.id } });
+      if (res.ok && res.imageUrl) {
+        setInstalledPath(res.imageUrl);
+        toast.success("Installed lifestyle image generated!");
+      } else {
+        toast.error("Failed to generate installed image");
+      }
+      await supabase.from("products").delete().eq("id", tempProduct.id);
+    } catch (e: any) {
+      toast.error(e.message || "Failed to generate installed image");
+    } finally {
+      setGeneratingLifestyle(false);
+    }
+  };
+
 
   const create = async () => {
     if (!type_id || !category_id || !subcategory_id || !family_id) {
@@ -314,10 +419,26 @@ function UnifiedNewProductPage() {
                     </button>
                   </div>
                 ) : (
-                  <ImageUploader
-                    multiple={false}
-                    onUploaded={(paths) => setInstalledPath(paths[0] || null)}
-                  />
+                  <div className="space-y-2">
+                    <ImageUploader
+                      multiple={false}
+                      onUploaded={(paths) => setInstalledPath(paths[0] || null)}
+                    />
+                    <button
+                      type="button"
+                      disabled={!originalPath || generatingLifestyle}
+                      onClick={handleGenerateLifestyleOnNew}
+                      className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/20 disabled:opacity-50 transition"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                      {generatingLifestyle ? "Generating Lifestyle Image…" : "Generate Installed Image (Engine 2)"}
+                    </button>
+                    {!originalPath && (
+                      <p className="text-[10px] text-amber-600 dark:text-amber-400">
+                        Upload Original Product Image first to enable lifestyle generation.
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -368,13 +489,22 @@ function UnifiedNewProductPage() {
               </button>
             </div>
 
+            <button
+              type="button"
+              disabled={generatingDetails}
+              onClick={handleGenerateDetailsOnNew}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-primary bg-primary/10 px-4 py-2.5 text-xs font-bold text-primary hover:bg-primary/20 disabled:opacity-50 transition shadow-sm"
+            >
+              <Sparkles className="h-4 w-4 text-primary" />
+              {generatingDetails ? "Generating Details…" : "Generate Product Details (Engine 1)"}
+            </button>
+
             {isAiMode ? (
               <div className="text-xs text-muted-foreground bg-primary/5 border border-primary/10 rounded-lg p-3 space-y-2">
                 <p className="font-medium text-primary flex items-center gap-1">
-                  <Check className="h-3.5 w-3.5" /> Fully Automated Pipeline
+                  <Check className="h-3.5 w-3.5" /> Product Details Engine (Engine 1)
                 </p>
-                <p>Upon clicking Create Product, the AI Operating System will run: Product Understanding, SEO, Lifestyle Rendering, Synonyms, Recommendations, and Quality Validation.</p>
-                <p className="font-semibold">It will auto-publish once validation checks pass.</p>
+                <p>Generates product description, canonical short description, SEO title, meta description, FAQ, and keywords using Universal Prompt Template.</p>
               </div>
             ) : (
               <div className="text-xs text-muted-foreground bg-amber-500/5 border border-amber-500/10 rounded-lg p-3 space-y-2">

@@ -76,43 +76,18 @@ const STAGE_ICONS: Record<string, React.ElementType> = {
   quality: ShieldCheck,
 };
 
-const STAGE_ORDER = ["product_details", "lifestyle", "understanding", "seo", "search", "recommendation", "quality"];
+const STAGE_ORDER = ["product_details", "lifestyle"];
 
 const STAGE_LABELS: Record<string, { label: string; description: string; color: string }> = {
   product_details: {
-    label: "Product Details Engine (Engine 1)",
-    description: "Universal text engine — generates all product copy, SEO, FAQ, metadata, search keywords and recommendations in a single structured JSON response.",
+    label: "Universal Detailed Prompt Editor (Engine 1)",
+    description: "Universal text engine template — generates all product descriptions, canonical short description, SEO title, meta description, FAQ, search keywords, and recommendations in a single structured JSON payload.",
     color: "text-violet-600 bg-violet-500/10 border-violet-500/20",
   },
   lifestyle: {
-    label: "Lifestyle Image Engine (Engine 2)",
-    description: "Universal image prompt template — renders the product inside a realistic installation scene using configured active image model.",
+    label: "Lifestyle Generation Installation Prompt Editor (Engine 2)",
+    description: "Universal image generation prompt template — renders the product in a realistic installed architectural scene using original manufacturer image + product metadata.",
     color: "text-amber-600 bg-amber-500/10 border-amber-500/20",
-  },
-  understanding: {
-    label: "Legacy: Product Understanding",
-    description: "Legacy pipeline template.",
-    color: "text-muted-foreground bg-muted/20 border-border/40",
-  },
-  seo: {
-    label: "Legacy: SEO Generation",
-    description: "Legacy pipeline template.",
-    color: "text-muted-foreground bg-muted/20 border-border/40",
-  },
-  search: {
-    label: "Search Intelligence",
-    description: "Generates search aliases, builder terminology, misspellings and regional variations.",
-    color: "text-emerald-600 bg-emerald-500/10 border-emerald-500/20",
-  },
-  recommendation: {
-    label: "Recommendation Engine",
-    description: "Generates cross-sell suggestions, complementary materials and upsell triggers.",
-    color: "text-orange-600 bg-orange-500/10 border-orange-500/20",
-  },
-  quality: {
-    label: "Quality Validation",
-    description: "Verifies the generated lifestyle image preserves the original product's identity.",
-    color: "text-rose-600 bg-rose-500/10 border-rose-500/20",
   },
 };
 
