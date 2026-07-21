@@ -14,7 +14,7 @@ export const Route = createFileRoute("/sitemap.xml")({
 
         try {
           // 1. Fetch types
-          const { data: types } = await supabase.from("product_types").select("slug");
+          const { data: types } = await supabase.from("product_types" as any).select("slug");
           if (types) {
             for (const t of types) {
               urls.push(`${origin}/${t.slug}`);
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/sitemap.xml")({
 
           // 2. Fetch categories
           const { data: categories } = await supabase
-            .from("categories")
+            .from("categories" as any)
             .select("slug, product_types(slug)");
           if (categories) {
             for (const c of categories) {
@@ -36,7 +36,7 @@ export const Route = createFileRoute("/sitemap.xml")({
 
           // 3. Fetch subcategories
           const { data: subcategories } = await supabase
-            .from("subcategories")
+            .from("subcategories" as any)
             .select("slug, categories(slug, product_types(slug))");
           if (subcategories) {
             for (const s of subcategories) {
