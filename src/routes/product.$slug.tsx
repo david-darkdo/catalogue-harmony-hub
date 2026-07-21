@@ -53,7 +53,7 @@ export const Route = createFileRoute("/product/$slug")({
       }
     };
   },
-  head: ({ loaderData }) => {
+  head: ({ loaderData }: any): any => {
     const product = loaderData?.product;
     const origin = loaderData?.origin || "https://showroom.enreach.concepts";
     const title = product?.seo_title || `${product?.name || "Product"} — Enreach Concepts`;

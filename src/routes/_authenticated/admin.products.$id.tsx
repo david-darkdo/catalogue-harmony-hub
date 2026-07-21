@@ -45,7 +45,7 @@ function EditPage() {
     loadAssets();
   };
   useEffect(() => {
-    const handleBeforeUnload = (e) => {
+    const handleBeforeUnload = (e: any) => {
       if (isDirty) {
         e.preventDefault();
         e.returnValue = "Unsaved changes exist.";

@@ -51,7 +51,7 @@ export const Route = createFileRoute("/sitemap.xml")({
 
           // 4. Fetch family groups
           const { data: families } = await supabase
-            .from("family_groups")
+            .from("family_groups" as any)
             .select("slug, subcategory_id, category_id");
           if (families) {
             const { data: allCats } = await supabase
