@@ -428,7 +428,7 @@ export class OpenAIProvider implements AIProvider {
       }
     }
 
-    throw new AIProviderError("No image data (b64_json or url) returned from OpenAI DALL-E payload", {
+    throw new AIProviderError(`No image data (b64_json or url) returned from OpenAI image generation payload [model: ${model}]`, {
       provider: this.name,
       model,
       url,

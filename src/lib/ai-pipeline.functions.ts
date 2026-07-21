@@ -682,7 +682,7 @@ export const runProductPipeline = createServerFn({ method: "POST" })
 
     if (anyCriticalFail) {
       const { data: currentP } = await supabase.from("products").select("processing_state").eq("id", productId).single();
-      if (currentP?.processing_state !== "needs_review") {
+      if ((currentP?.processing_state as string) !== "needs_review") {
         await supabase.from("products").update({
           processing_state: "error",
           error_log: { message: "One or more critical AI jobs failed. See ai_jobs.error_log." },
@@ -694,7 +694,7 @@ export const runProductPipeline = createServerFn({ method: "POST" })
 
     // Check if the product was routed to needs_review
     const { data: fresh } = await supabase.from("products").select("*").eq("id", productId).maybeSingle();
-    if (fresh?.processing_state !== "needs_review") {
+    if ((fresh?.processing_state as string) !== "needs_review") {
       await supabase.rpc("rebuild_search_index" as any, { _product_id: productId } as any);
       const { data: freshAfterSearch } = await supabase.from("products").select("*").eq("id", productId).maybeSingle();
 
@@ -848,7 +848,7 @@ export const getAIConfigDetails = createServerFn({ method: "GET" })
       },
       claude: {
         apiKeyStatus: maskKey(anthropicKey),
-        llmModel: settings?.anthropic_llm_model || "claude-3-opus",
+        llmModel: (settings as any)?.anthropic_llm_model || "claude-3-opus",
       }
     };
   });
