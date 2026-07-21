@@ -207,7 +207,7 @@ export const Route = createFileRoute("/$")({
 
 function HierarchyLandingPage() {
   const params = Route.useParams();
-  const { data } = useSuspenseQuery(hierarchyQuery(params._splat, ""));
+  const { data } = useSuspenseQuery(hierarchyQuery((params as any)._splat, ""));
   const { type, category, subcategory, family, products, childCategories, childSubcategories, childFamilies, origin } = data;
 
   // Build visual breadcrumbs array

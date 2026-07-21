@@ -442,6 +442,9 @@ export class OpenAIProvider implements AIProvider {
 
 // 3. Placeholder Anthropic Claude Provider
 export class ClaudeProvider implements AIProvider {
+  async generateLifestyleImage(prompt: string, originalImageBuffer?: Buffer): Promise<Buffer> {
+    return this.generateImage(prompt);
+  }
   name = "claude";
   async callLLM(prompt: string, systemPrompt: string): Promise<string> {
     throw new Error("Anthropic Claude Provider is not configured. Add ANTHROPIC_API_KEY to activate.");
