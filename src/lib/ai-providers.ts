@@ -59,7 +59,7 @@ export class GeminiProvider implements AIProvider {
     if (!key) throw new Error("GEMINI_API_KEY environment variable is not defined");
 
     const isVertex = this.config?.geminiUseVertex ?? key.startsWith("AQ");
-    const model = this.config?.geminiLlmModel || process.env.GEMINI_LLM_MODEL || "gemini-1.5-flash";
+    const model = this.config?.geminiLlmModel || process.env.GEMINI_LLM_MODEL || process.env.GEMINI_LLM_MODEL;
     
     let url = "";
     if (isVertex) {
@@ -156,7 +156,7 @@ export class GeminiProvider implements AIProvider {
     if (!key) throw new Error("GEMINI_API_KEY environment variable is not defined");
 
     const isVertex = this.config?.geminiUseVertex ?? key.startsWith("AQ");
-    const model = this.config?.geminiImageModel || process.env.GEMINI_IMAGE_MODEL || "imagen-3.0-generate-002";
+    const model = this.config?.geminiImageModel || process.env.GEMINI_IMAGE_MODEL || process.env.GEMINI_IMAGE_MODEL;
 
     let url = "";
     if (isVertex) {
@@ -265,7 +265,7 @@ export class OpenAIProvider implements AIProvider {
     const key = process.env.OPENAI_API_KEY;
     if (!key) throw new Error("OPENAI_API_KEY environment variable is not defined");
 
-    const model = this.config?.openaiLlmModel || process.env.OPENAI_LLM_MODEL || "gpt-4o-mini";
+    const model = this.config?.openaiLlmModel || process.env.OPENAI_LLM_MODEL || process.env.OPENAI_LLM_MODEL;
     const url = "https://api.openai.com/v1/chat/completions";
     const requestHeaders = {
       "Content-Type": "application/json",
@@ -338,7 +338,7 @@ export class OpenAIProvider implements AIProvider {
     const key = process.env.OPENAI_API_KEY;
     if (!key) throw new Error("OPENAI_API_KEY environment variable is not defined");
 
-    const model = this.config?.openaiImageModel || process.env.OPENAI_IMAGE_MODEL || "dall-e-3";
+    const model = this.config?.openaiImageModel || process.env.OPENAI_IMAGE_MODEL || process.env.OPENAI_IMAGE_MODEL;
     const size = this.config?.openaiImageSize || process.env.OPENAI_IMAGE_SIZE || "1024x1024";
     const url = "https://api.openai.com/v1/images/generations";
     const requestHeaders = {

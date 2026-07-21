@@ -183,11 +183,11 @@ export const runProductPipeline = createServerFn({ method: "POST" })
     const { data: settings } = await supabase.from("app_settings").select("*").limit(1).maybeSingle();
     const config = settings ? {
       activeProvider: settings.active_ai_provider || "openai",
-      openaiLlmModel: settings.openai_llm_model || "gpt-4o-mini",
-      openaiImageModel: settings.openai_image_model || "dall-e-3",
+      openaiLlmModel: settings.openai_llm_model,
+      openaiImageModel: settings.openai_image_model,
       openaiImageSize: settings.openai_image_size || "1024x1024",
-      geminiLlmModel: settings.gemini_llm_model || "gemini-1.5-flash",
-      geminiImageModel: settings.gemini_image_model || "imagen-3.0-generate-002"
+      geminiLlmModel: settings.gemini_llm_model,
+      geminiImageModel: settings.gemini_image_model
     } : undefined;
 
     const provider = getAIProvider(config);
@@ -721,11 +721,11 @@ export const testLLMConnection = createServerFn({ method: "POST" })
       settingsRow = settings;
       const config = settings ? {
         activeProvider: settings.active_ai_provider || "openai",
-        openaiLlmModel: settings.openai_llm_model || "gpt-4o-mini",
-        openaiImageModel: settings.openai_image_model || "dall-e-3",
+        openaiLlmModel: settings.openai_llm_model,
+        openaiImageModel: settings.openai_image_model,
         openaiImageSize: settings.openai_image_size || "1024x1024",
-        geminiLlmModel: settings.gemini_llm_model || "gemini-1.5-flash",
-        geminiImageModel: settings.gemini_image_model || "imagen-3.0-generate-002",
+        geminiLlmModel: settings.gemini_llm_model,
+        geminiImageModel: settings.gemini_image_model,
         geminiUseVertex: settings.gemini_use_vertex ?? false
       } : undefined;
       const provider = getAIProvider(config);
@@ -771,11 +771,11 @@ export const testImageConnection = createServerFn({ method: "POST" })
       settingsRow = settings;
       const config = settings ? {
         activeProvider: settings.active_ai_provider || "openai",
-        openaiLlmModel: settings.openai_llm_model || "gpt-4o-mini",
-        openaiImageModel: settings.openai_image_model || "dall-e-3",
+        openaiLlmModel: settings.openai_llm_model,
+        openaiImageModel: settings.openai_image_model,
         openaiImageSize: settings.openai_image_size || "1024x1024",
-        geminiLlmModel: settings.gemini_llm_model || "gemini-1.5-flash",
-        geminiImageModel: settings.gemini_image_model || "imagen-3.0-generate-002",
+        geminiLlmModel: settings.gemini_llm_model,
+        geminiImageModel: settings.gemini_image_model,
         geminiUseVertex: settings.gemini_use_vertex ?? false
       } : undefined;
       const provider = getAIProvider(config);
@@ -978,11 +978,11 @@ export const runSandboxStage = createServerFn({ method: "POST" })
     const { data: settings } = await supabase.from("app_settings").select("*").limit(1).maybeSingle();
     const config = settings ? {
       activeProvider: settings.active_ai_provider || "openai",
-      openaiLlmModel: settings.openai_llm_model || "gpt-4o-mini",
-      openaiImageModel: settings.openai_image_model || "dall-e-3",
+      openaiLlmModel: settings.openai_llm_model,
+      openaiImageModel: settings.openai_image_model,
       openaiImageSize: settings.openai_image_size || "1024x1024",
-      geminiLlmModel: settings.gemini_llm_model || "gemini-1.5-flash",
-      geminiImageModel: settings.gemini_image_model || "imagen-3.0-generate-002",
+      geminiLlmModel: settings.gemini_llm_model,
+      geminiImageModel: settings.gemini_image_model,
       geminiUseVertex: settings.gemini_use_vertex ?? false
     } : undefined;
 

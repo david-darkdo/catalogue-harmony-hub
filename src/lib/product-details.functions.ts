@@ -129,11 +129,11 @@ Output strict JSON with:
     const settings = settingsRes.data;
     const config = settings ? {
       activeProvider: settings.active_ai_provider || "openai",
-      openaiLlmModel: settings.openai_llm_model || "gpt-4o-mini",
-      openaiImageModel: settings.openai_image_model || "dall-e-3",
+      openaiLlmModel: settings.openai_llm_model,
+      openaiImageModel: settings.openai_image_model,
       openaiImageSize: settings.openai_image_size || "1024x1024",
-      geminiLlmModel: settings.gemini_llm_model || "gemini-1.5-flash",
-      geminiImageModel: settings.gemini_image_model || "imagen-3.0-generate-002"
+      geminiLlmModel: settings.gemini_llm_model,
+      geminiImageModel: settings.gemini_image_model
     } : undefined;
 
     const provider = getAIProvider(config as any);
