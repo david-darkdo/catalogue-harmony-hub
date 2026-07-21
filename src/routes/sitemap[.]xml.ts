@@ -60,8 +60,8 @@ export const Route = createFileRoute("/sitemap.xml")({
             const { data: allSubs } = await supabase
               .from("subcategories" as any)
               .select("id, slug, categories(slug, product_types(slug))");
-            const catMap = new Map(allCats?.map((c) => [c.id, c]));
-            const subMap = new Map(allSubs?.map((s) => [s.id, s]));
+            const catMap = new Map(allCats?.map((c: any) => [c.id, c]));
+            const subMap = new Map(allSubs?.map((s: any) => [s.id, s]));
 
             for (const f of families) {
               if (f.subcategory_id && subMap.has(f.subcategory_id)) {
