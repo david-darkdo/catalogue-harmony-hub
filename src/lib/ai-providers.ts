@@ -17,7 +17,7 @@ export interface AIProvider {
 
 export class AIProviderError extends Error {
   provider: string;
-  model: string;
+  model?: string;
   url: string;
   requestHeaders: any;
   requestBody: any;
@@ -26,7 +26,7 @@ export class AIProviderError extends Error {
 
   constructor(message: string, params: {
     provider: string;
-    model: string;
+    model?: string;
     url: string;
     requestHeaders: any;
     requestBody: any;
@@ -36,7 +36,7 @@ export class AIProviderError extends Error {
     super(message);
     this.name = "AIProviderError";
     this.provider = params.provider;
-    this.model = params.model;
+    this.model = params.model || "unknown";
     this.url = params.url;
     this.requestHeaders = params.requestHeaders;
     this.requestBody = params.requestBody;
