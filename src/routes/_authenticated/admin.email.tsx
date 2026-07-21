@@ -110,7 +110,7 @@ function CommunicationCenterPage() {
         if (error) throw error;
       } else {
         const { data: me } = await supabase.auth.getUser();
-        const { data: profile } = await supabase.from("profiles").select("id").eq("auth_id", me.user?.id ?? "").maybeSingle();
+        const { data: profile } = await supabase.from("profiles" as any).select("id").eq("auth_id", me.user?.id ?? "").maybeSingle();
         const { error } = await supabase.from("communication_campaigns" as any).insert({
           ...payload,
           created_by: profile?.id || null
@@ -131,7 +131,7 @@ function CommunicationCenterPage() {
     setBusy(true);
     try {
       const { data: me } = await supabase.auth.getUser();
-      const { data: profile } = await supabase.from("profiles").select("id").eq("auth_id", me.user?.id ?? "").maybeSingle();
+      const { data: profile } = await supabase.from("profiles" as any).select("id").eq("auth_id", me.user?.id ?? "").maybeSingle();
       
       const updates: any = { status: newStatus };
       if (newStatus === "PENDING_REVIEW") {
@@ -187,7 +187,7 @@ function CommunicationCenterPage() {
         
         // Save history version
         const { data: me } = await supabase.auth.getUser();
-        const { data: profile } = await supabase.from("profiles").select("id").eq("auth_id", me.user?.id ?? "").maybeSingle();
+        const { data: profile } = await supabase.from("profiles" as any).select("id").eq("auth_id", me.user?.id ?? "").maybeSingle();
         
         // Fetch current version count
         const { data: hist } = await supabase.from("communication_templates_history" as any).select("version").eq("template_id", editingTemplate.id).order("version", { ascending: false }).limit(1);
@@ -208,7 +208,7 @@ function CommunicationCenterPage() {
         
         // Insert history version 1
         const { data: me } = await supabase.auth.getUser();
-        const { data: profile } = await supabase.from("profiles").select("id").eq("auth_id", me.user?.id ?? "").maybeSingle();
+        const { data: profile } = await supabase.from("profiles" as any).select("id").eq("auth_id", me.user?.id ?? "").maybeSingle();
         await supabase.from("communication_templates_history" as any).insert({
           template_id: data.id,
           version: 1,
