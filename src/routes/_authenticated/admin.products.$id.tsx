@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ArrowLeft, Sparkles, Trash2, Activity } from "lucide-react";
 import { regenerateWithHashGuard } from "@/lib/pipeline";
+import { useServerFn } from "@tanstack/react-start";
+import { generateStandaloneLifestyleImage } from "@/lib/lifestyle-image.functions";
 import { ImageUploader, ImageTile, publicImageUrl, deleteStorageObject } from "@/components/ImageUploader";
 
 type AssetRow = {
@@ -448,8 +450,9 @@ function Chk({ label, checked, onChange }: { label: string; checked: boolean; on
 }
 
 function AssetManager({
-  productId, assets, onChange, imageMode,
+  productId, assets, onChange, imageMode, originalImageUrl,
 }: {
+  originalImageUrl?: string | null;
   productId: string;
   assets: AssetRow[];
   onChange: () => Promise<void> | void;
@@ -516,13 +519,23 @@ function AssetManager({
               </span>
             </div>
             {canUploadHere && (
-              <ImageUploader
-                productId={productId}
-                multiple={acceptMultiple}
-                label={`Upload ${g}`}
-                compact
-                onUploaded={async (paths) => { await insert(paths, g); }}
-              />
+              <div className="space-y-2">
+                <ImageUploader
+                  productId={productId}
+                  multiple={acceptMultiple}
+                  label={`Upload ${g} Image`}
+                  compact
+                  onUploaded={async (paths) => { await insert(paths, g); }}
+                />
+                {g === "installed" && (
+                  <StandaloneLifestyleButton
+                    productId={productId}
+                    hasOriginal={!!originalImageUrl}
+                    hasInstalled={list.length > 0}
+                    onGenerated={async () => { await onChange(); }}
+                  />
+                )}
+              </div>
             )}
             {list.length > 0 && (
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
@@ -563,3 +576,59 @@ function getReadiness(p: any, assets: any[]) {
 }
 
 
+
+function StandaloneLifestyleButton({
+  productId, hasOriginal, hasInstalled, onGenerated,
+}: {
+  productId: string;
+  hasOriginal: boolean;
+  hasInstalled: boolean;
+  onGenerated: () => Promise<void> | void;
+}) {
+  const generateImageFn = useServerFn(generateStandaloneLifestyleImage);
+  const [generating, setGenerating] = useState(false);
+
+  const handleGenerate = async () => {
+    if (!hasOriginal) {
+      toast.error("Original product image is required before generating an installed image.");
+      return;
+    }
+    setGenerating(true);
+    try {
+      const res = await generateImageFn({ data: { productId } });
+      if (res.ok) {
+        toast.success("Installed lifestyle image generated successfully!");
+        await onGenerated();
+      } else {
+        toast.error("Failed to generate installed image.");
+      }
+    } catch (e: any) {
+      toast.error(e.message ?? "Generation failed");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  return (
+    <div className="pt-1">
+      <button
+        type="button"
+        disabled={!hasOriginal || generating}
+        onClick={handleGenerate}
+        className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-all hover:bg-primary/20 hover:border-primary disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <Sparkles className="h-3.5 w-3.5" />
+        {generating
+          ? "Generating Lifestyle Image…"
+          : hasInstalled
+          ? "Regenerate Installed Image"
+          : "Generate Installed Image"}
+      </button>
+      {!hasOriginal && (
+        <p className="mt-1 text-[11px] text-amber-600 dark:text-amber-400">
+          Original product image is required before generating an installed image.
+        </p>
+      )}
+    </div>
+  );
+}

@@ -2,10 +2,11 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { RefreshCw, Play, AlertTriangle, CheckCircle2, Clock, Archive } from "lucide-react";
+import { RefreshCw, Play, AlertTriangle, CheckCircle2, Clock, Archive, Sparkles } from "lucide-react";
 import { publicImageUrl } from "@/components/ImageUploader";
 import { useServerFn } from "@tanstack/react-start";
 import { runProductPipeline } from "@/lib/ai-pipeline.functions";
+import { generateStandaloneLifestyleImage } from "@/lib/lifestyle-image.functions";
 import { regenerateWithHashGuard, retryProductPipeline } from "@/lib/pipeline";
 
 export const Route = createFileRoute("/_authenticated/admin/pipeline")({
@@ -17,6 +18,29 @@ type Bucket = "pending" | "processing" | "completed" | "needs_review" | "error" 
 
 function PipelinePage() {
   const runPipeline = useServerFn(runProductPipeline);
+  const generateLifestyleFn = useServerFn(generateStandaloneLifestyleImage);
+  const [generatingLifestyle, setGeneratingLifestyle] = useState<string | null>(null);
+
+  const handleGenerateLifestyleOnly = async (productId: string, hasOriginalImage: boolean) => {
+    if (!hasOriginalImage) {
+      toast.error("Original product image is required before generating an installed image.");
+      return;
+    }
+    setGeneratingLifestyle(productId);
+    try {
+      const res = await generateLifestyleFn({ data: { productId } });
+      if (res.ok) {
+        toast.success("Installed lifestyle image generated successfully!");
+      } else {
+        toast.error("Failed to generate installed image.");
+      }
+    } catch (e: any) {
+      toast.error(e.message ?? "Generation failed");
+    } finally {
+      setGeneratingLifestyle(null);
+      await loadRows(); await loadCounts();
+    }
+  };
   const [running, setRunning] = useState<string | null>(null);
   const [bucket, setBucket] = useState<Bucket>("processing");
   const [rows, setRows] = useState<any[]>([]);
@@ -225,6 +249,14 @@ function PipelinePage() {
                         <RefreshCw className="h-3 w-3" /> Regenerate
                       </button>
                     )}
+                    <button
+                      disabled={generatingLifestyle === p.id || !p.image_url}
+                      onClick={() => void handleGenerateLifestyleOnly(p.id, !!p.image_url)}
+                      title={!p.image_url ? "Original product image is required before generating an installed image." : "Generate Installed Image"}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 hover:border-primary disabled:opacity-50 cursor-pointer shadow-sm"
+                    >
+                      <Sparkles className="h-3 w-3" /> {generatingLifestyle === p.id ? "Generating Image…" : "Generate Installed Image"}
+                    </button>
                     {bucket !== "archived" ? (
                       <button
                         onClick={() => void handleArchive(p.id)}
