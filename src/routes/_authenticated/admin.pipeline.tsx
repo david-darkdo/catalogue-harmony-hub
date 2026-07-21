@@ -7,6 +7,7 @@ import { publicImageUrl } from "@/components/ImageUploader";
 import { useServerFn } from "@tanstack/react-start";
 import { runProductPipeline } from "@/lib/ai-pipeline.functions";
 import { generateStandaloneLifestyleImage } from "@/lib/lifestyle-image.functions";
+import { runProductDetailsEngine } from "@/lib/product-details.functions";
 import { regenerateWithHashGuard, retryProductPipeline } from "@/lib/pipeline";
 
 export const Route = createFileRoute("/_authenticated/admin/pipeline")({
@@ -19,7 +20,26 @@ type Bucket = "pending" | "processing" | "completed" | "needs_review" | "error" 
 function PipelinePage() {
   const runPipeline = useServerFn(runProductPipeline);
   const generateLifestyleFn = useServerFn(generateStandaloneLifestyleImage);
+  const runDetailsFn = useServerFn(runProductDetailsEngine);
+  const [runningDetails, setRunningDetails] = useState<string | null>(null);
   const [generatingLifestyle, setGeneratingLifestyle] = useState<string | null>(null);
+
+  const handleGenerateDetailsOnly = async (productId: string) => {
+    setRunningDetails(productId);
+    try {
+      const res = await runDetailsFn({ data: { productId } });
+      if (res.ok) {
+        toast.success("Engine 1: Product details generated successfully!");
+      } else {
+        toast.error("Failed to generate product details.");
+      }
+    } catch (e: any) {
+      toast.error(e.message ?? "Generation failed");
+    } finally {
+      setRunningDetails(null);
+      await loadRows(); await loadCounts();
+    }
+  };
 
   const handleGenerateLifestyleOnly = async (productId: string, hasOriginalImage: boolean) => {
     if (!hasOriginalImage) {
@@ -227,10 +247,10 @@ function PipelinePage() {
                     {(bucket === "pending" || bucket === "processing" || bucket === "error") && (
                       <button
                         disabled={running === p.id}
-                        onClick={() => void handleRunNow(p.id)}
+                        onClick={() => void handleGenerateDetailsOnly(p.id)}
                         className="inline-flex items-center gap-1.5 rounded-lg border border-primary bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/95 disabled:opacity-50 cursor-pointer shadow-sm"
                       >
-                        <Play className="h-3 w-3" /> {running === p.id ? "Running…" : "Run now"}
+                        <Play className="h-3 w-3" /> {runningDetails === p.id ? "Generating Details…" : "Generate Details (Engine 1)"}
                       </button>
                     )}
                     {bucket === "error" && (

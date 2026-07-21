@@ -7,6 +7,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { runSandboxStage } from "@/lib/ai-pipeline.functions";
 import {
   Sparkles,
+  FileText,
   Save,
   RotateCcw,
   History,
@@ -66,6 +67,8 @@ type SandboxResult = {
 };
 
 const STAGE_ICONS: Record<string, React.ElementType> = {
+  product_details: FileText,
+  lifestyle: ImageIcon,
   understanding: Brain,
   seo: Search,
   lifestyle: ImageIcon,
@@ -74,23 +77,28 @@ const STAGE_ICONS: Record<string, React.ElementType> = {
   quality: ShieldCheck,
 };
 
-const STAGE_ORDER = ["understanding", "seo", "lifestyle", "search", "recommendation", "quality"];
+const STAGE_ORDER = ["product_details", "lifestyle", "understanding", "seo", "search", "recommendation", "quality"];
 
 const STAGE_LABELS: Record<string, { label: string; description: string; color: string }> = {
-  understanding: {
-    label: "Product Understanding",
-    description: "Master brain — analyses the original product image and creates the Product Intelligence Object.",
+  product_details: {
+    label: "Product Details Engine (Engine 1)",
+    description: "Universal text engine — generates all product copy, SEO, FAQ, metadata, search keywords and recommendations in a single structured JSON response.",
     color: "text-violet-600 bg-violet-500/10 border-violet-500/20",
   },
-  seo: {
-    label: "SEO Generation",
-    description: "Consumes Product Intelligence to generate canonical descriptions, titles, metadata and FAQ.",
-    color: "text-blue-600 bg-blue-500/10 border-blue-500/20",
-  },
   lifestyle: {
-    label: "Lifestyle Rendering",
-    description: "Generates an image placement prompt to render the product in a luxury interior scene.",
+    label: "Lifestyle Image Engine (Engine 2)",
+    description: "Universal image prompt template — renders the product inside a realistic installation scene using configured active image model.",
     color: "text-amber-600 bg-amber-500/10 border-amber-500/20",
+  },
+  understanding: {
+    label: "Legacy: Product Understanding",
+    description: "Legacy pipeline template.",
+    color: "text-muted-foreground bg-muted/20 border-border/40",
+  },
+  seo: {
+    label: "Legacy: SEO Generation",
+    description: "Legacy pipeline template.",
+    color: "text-muted-foreground bg-muted/20 border-border/40",
   },
   search: {
     label: "Search Intelligence",
@@ -115,7 +123,7 @@ function AdminAiTemplatesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [templates, setTemplates] = useState<PromptTemplate[]>([]);
-  const [selectedKey, setSelectedKey] = useState<string>("understanding");
+  const [selectedKey, setSelectedKey] = useState<string>("product_details");
   const [activeTab, setActiveTab] = useState<"editor" | "sandbox" | "history">("editor");
   const [historyLogs, setHistoryLogs] = useState<VersionHistory[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -423,7 +431,7 @@ function AdminAiTemplatesPage() {
                             ? "text-emerald-700 bg-emerald-500/10 border border-emerald-500/20"
                             : "text-red-600 bg-red-500/10 border border-red-500/20"
                         }`}>
-                          {currentTemplate.is_active ? "Active" : "Disabled"}
+                          {currentTemplate.is_active ? "Active" : "Inactive"}
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5">{currentTemplate.purpose}</p>

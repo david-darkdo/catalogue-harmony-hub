@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Check, Sparkles, Upload, FileText, Globe } from "lucide-react";
 import { enqueueAiPipeline } from "@/lib/pipeline";
 import { runProductPipeline } from "@/lib/ai-pipeline.functions";
+import { runProductDetailsEngine } from "@/lib/product-details.functions";
 import { ImageUploader, ImageTile, publicImageUrl, deleteStorageObject } from "@/components/ImageUploader";
 
 export const Route = createFileRoute("/_authenticated/admin/products/new")({
@@ -157,7 +158,7 @@ function UnifiedNewProductPage() {
       if (installedPath) {
         assets.push({
           product_id: data.id,
-          asset_type: "installed" as const,
+          asset_type: "installed" as any,
           asset_url: installedPath,
           is_primary: false,
           generated_by_ai: false,
@@ -168,14 +169,13 @@ function UnifiedNewProductPage() {
 
       if (isAiMode) {
         try {
-          await enqueueAiPipeline(data.id);
-          runProductPipeline({ data: { productId: data.id } }).catch((e: any) => {
-            console.error("Pipeline run failed:", e);
+          runProductDetailsFn({ data: { productId: data.id } }).catch((e: any) => {
+            console.error("Product Details Engine failed:", e);
           });
-          toast.success("Product created & AI pipeline started!");
+          toast.success("Product created & Product Details Engine started!");
         } catch (e: any) {
-          console.error("Pipeline queue failed:", e);
-          toast.error("Product created but AI pipeline queue failed.");
+          console.error("Engine 1 failed:", e);
+          toast.error("Product created but Product Details Engine failed.");
         }
       } else {
         toast.success("Product created & published!");

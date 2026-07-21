@@ -6,6 +6,7 @@ import { ArrowLeft, Sparkles, Trash2, Activity } from "lucide-react";
 import { regenerateWithHashGuard } from "@/lib/pipeline";
 import { useServerFn } from "@tanstack/react-start";
 import { generateStandaloneLifestyleImage } from "@/lib/lifestyle-image.functions";
+import { runProductDetailsEngine } from "@/lib/product-details.functions";
 import { ImageUploader, ImageTile, publicImageUrl, deleteStorageObject } from "@/components/ImageUploader";
 
 type AssetRow = {
@@ -32,6 +33,25 @@ function EditPage() {
   const [saving, setSaving] = useState(false);
   const [assets, setAssets] = useState<AssetRow[]>([]);
   const [isDirty, setIsDirty] = useState(false);
+  const runDetailsFn = useServerFn(runProductDetailsEngine);
+  const [generatingDetails, setGeneratingDetails] = useState(false);
+
+  const handleGenerateDetails = async () => {
+    setGeneratingDetails(true);
+    try {
+      const res = await runDetailsFn({ data: { productId: id } });
+      if (res.ok) {
+        toast.success("Engine 1: Product details & text copy generated successfully!");
+        await load();
+      } else {
+        toast.error("Failed to generate product details.");
+      }
+    } catch (e: any) {
+      toast.error(e.message ?? "Generation failed");
+    } finally {
+      setGeneratingDetails(false);
+    }
+  };
 
   const loadAssets = useCallback(async () => {
     const { data } = await supabase.from("product_assets").select("*").eq("product_id", id).order("created_at");
@@ -358,8 +378,13 @@ function EditPage() {
         <section className="rounded-xl border border-border bg-card p-5 space-y-3 md:col-span-2">
           <div className="flex items-center justify-between">
             <h2 className="font-display font-semibold flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> AI Control Center</h2>
-            <button onClick={regenAi} className="rounded-md border border-primary/40 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10">
-              {p.ai_status === "idle" ? "Generate AI Assets" : "Regenerate AI Assets"}
+            <button
+              disabled={generatingDetails}
+              onClick={handleGenerateDetails}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-primary bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/20 disabled:opacity-50 transition"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              {generatingDetails ? "Generating Details…" : "Generate Product Details (Engine 1)"}
             </button>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -509,7 +534,7 @@ function AssetManager({
       {groups.map((g) => {
         const list = assets.filter((a) => a.asset_type === g);
         const acceptMultiple = g === "gallery" || g === "original";
-        const canUploadHere = !(imageMode === "ai" && g === "installed");
+        const canUploadHere = true;
         return (
           <div key={g} className="space-y-2">
             <div className="flex items-center justify-between">

@@ -25,7 +25,7 @@ export const generateStandaloneLifestyleImage = createServerFn({ method: "POST" 
     // 1. Retrieve Original Product Record
     const { data: product, error: pErr } = await supabase
       .from("products")
-      .select("id, name, brand, finish, material, color, size, image_url, generation_version, family_id, image_mode")
+      .select("*")
       .eq("id", productId)
       .maybeSingle();
 
@@ -65,14 +65,39 @@ export const generateStandaloneLifestyleImage = createServerFn({ method: "POST" 
       }
     }
 
-    // 3. Compile Lifestyle Prompt (interpolating basic product metadata)
+    // 3. Resolve Taxonomy Names for Context
+    let typeName = "product";
+    let categoryName = "material";
+    let subcategoryName = "";
+    let familyName = "";
+
+    const [typeRes, catRes, subRes, famRes] = await Promise.all([
+      product.type_id ? supabase.from("product_types").select("name").eq("id", product.type_id).maybeSingle() : Promise.resolve({ data: null }),
+      product.category_id ? supabase.from("categories").select("name").eq("id", product.category_id).maybeSingle() : Promise.resolve({ data: null }),
+      product.subcategory_id ? supabase.from("subcategories").select("name").eq("id", product.subcategory_id).maybeSingle() : Promise.resolve({ data: null }),
+      product.family_id ? supabase.from("family_groups").select("name").eq("id", product.family_id).maybeSingle() : Promise.resolve({ data: null }),
+    ]);
+
+    if (typeRes.data?.name) typeName = typeRes.data.name;
+    if (catRes.data?.name) categoryName = catRes.data.name;
+    if (subRes.data?.name) subcategoryName = subRes.data.name;
+    if (famRes.data?.name) familyName = famRes.data.name;
+
+    // 4. Compile Lifestyle Prompt (interpolating comprehensive product metadata)
     let prompt = rawTemplateText
       .replace(/{product_name}/g, product.name || "")
       .replace(/{brand}/g, product.brand ?? "premium")
-      .replace(/{finish}/g, product.finish ?? "premium finish")
+      .replace(/{code}/g, product.code ?? "")
+      .replace(/{production_name}/g, product.production_name ?? "")
+      .replace(/{finish}/g, product.finish ?? product.finish_name ?? "premium finish")
       .replace(/{material}/g, product.material ?? "premium material")
       .replace(/{color}/g, product.color ?? "")
-      .replace(/{size}/g, product.size ?? "");
+      .replace(/{size}/g, product.size ?? "")
+      .replace(/{type}/g, typeName)
+      .replace(/{product_type}/g, typeName)
+      .replace(/{category}/g, categoryName)
+      .replace(/{subcategory}/g, subcategoryName)
+      .replace(/{family}/g, familyName);
 
     if (familyOverride) {
       prompt += `\n\nAdditional Directives: ${familyOverride}`;
