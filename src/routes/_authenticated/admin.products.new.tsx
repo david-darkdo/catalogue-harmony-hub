@@ -169,7 +169,7 @@ function UnifiedNewProductPage() {
 
       if (isAiMode) {
         try {
-          runProductDetailsFn({ data: { productId: data.id } }).catch((e: any) => {
+          runProductDetailsEngine({ data: { productId: data.id } }).catch((e: any) => {
             console.error("Product Details Engine failed:", e);
           });
           toast.success("Product created & Product Details Engine started!");
