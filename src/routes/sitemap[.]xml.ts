@@ -55,10 +55,10 @@ export const Route = createFileRoute("/sitemap.xml")({
             .select("slug, subcategory_id, category_id");
           if (families) {
             const { data: allCats } = await supabase
-              .from("categories")
+              .from("categories" as any)
               .select("id, slug, product_types(slug)");
             const { data: allSubs } = await supabase
-              .from("subcategories")
+              .from("subcategories" as any)
               .select("id, slug, categories(slug, product_types(slug))");
             const catMap = new Map(allCats?.map((c) => [c.id, c]));
             const subMap = new Map(allSubs?.map((s) => [s.id, s]));
@@ -85,7 +85,7 @@ export const Route = createFileRoute("/sitemap.xml")({
 
           // 5. Fetch published products
           const { data: products } = await supabase
-            .from("products")
+            .from("products" as any)
             .select("slug")
             .eq("status", "published")
             .eq("processing_state", "completed")
