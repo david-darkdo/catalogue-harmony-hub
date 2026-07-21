@@ -71,7 +71,6 @@ const STAGE_ICONS: Record<string, React.ElementType> = {
   lifestyle: ImageIcon,
   understanding: Brain,
   seo: Search,
-  lifestyle: ImageIcon,
   search: Zap,
   recommendation: Star,
   quality: ShieldCheck,
