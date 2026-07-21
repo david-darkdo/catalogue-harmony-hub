@@ -379,14 +379,14 @@ function CommunicationCenterPage() {
               <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
                 {recentEvents.map((ev) => (
                   <div key={e(v as any).id} className="text-xs flex gap-3 items-start border-b border-border/50 pb-2.5 last:border-0 last:pb-0">
-                    <span className="rounded bg-muted px-2 py-0.5 font-mono text-[9px] text-muted-foreground tracking-tight uppercase">{ev.event_type}</span>
+                    <span className="rounded bg-muted px-2 py-0.5 font-mono text-[9px] text-muted-foreground tracking-tight uppercase">{e(v as any).event_type}</span>
                     <div className="flex-1">
                       <div className="font-medium text-foreground">
-                        User: {ev.profiles?.full_name || ev.profiles?.email || "Guest"}
+                        User: {e(v as any).profiles?.full_name || e(v as any).profiles?.email || "Guest"}
                       </div>
-                      <div className="text-[10px] text-muted-foreground font-mono mt-0.5">Payload: {JSON.stringify(ev.meta)}</div>
+                      <div className="text-[10px] text-muted-foreground font-mono mt-0.5">Payload: {JSON.stringify(e(v as any).meta)}</div>
                     </div>
-                    <span className="text-[9px] text-muted-foreground">{new Date(ev.created_at).toLocaleTimeString()}</span>
+                    <span className="text-[9px] text-muted-foreground">{new Date(e(v as any).created_at).toLocaleTimeString()}</span>
                   </div>
                 ))}
                 {recentEvents.length === 0 && (
