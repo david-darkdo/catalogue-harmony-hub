@@ -1,10 +1,10 @@
 export interface AIProviderConfig {
   activeProvider: string;
-  openaiLlmModel: string;
-  openaiImageModel: string;
-  openaiImageSize: string;
-  geminiLlmModel: string;
-  geminiImageModel: string;
+  openaiLlmModel?: string | null;
+  openaiImageModel?: string | null;
+  openaiImageSize?: string | null;
+  geminiLlmModel?: string | null;
+  geminiImageModel?: string | null;
   geminiUseVertex?: boolean;
 }
 
