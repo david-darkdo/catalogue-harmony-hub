@@ -38,7 +38,7 @@ function CollectionPage() {
         const { collection_id, items } = await getUserCollectionItems(user.id);
         setCollectionId(collection_id);
         setItems(items);
-        setProducts(await fetchProductsByIds(items.map((i) => i.product_id)));
+        setProducts(await fetchProductsByIds(items.map((i: any) => i.product_id)));
       } else {
         const guest = getGuestCollection();
         setItems(guest);

@@ -378,7 +378,7 @@ function CommunicationCenterPage() {
               </div>
               <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
                 {recentEvents.map((ev) => (
-                  <div key={ev.id} className="text-xs flex gap-3 items-start border-b border-border/50 pb-2.5 last:border-0 last:pb-0">
+                  <div key={e(v as any).id} className="text-xs flex gap-3 items-start border-b border-border/50 pb-2.5 last:border-0 last:pb-0">
                     <span className="rounded bg-muted px-2 py-0.5 font-mono text-[9px] text-muted-foreground tracking-tight uppercase">{ev.event_type}</span>
                     <div className="flex-1">
                       <div className="font-medium text-foreground">

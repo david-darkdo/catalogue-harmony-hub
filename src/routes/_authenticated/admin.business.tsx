@@ -188,7 +188,7 @@ function BusinessOpsPage() {
       setTrusts((trs ?? []) as any);
       setLoaded(true);
     } catch (err: any) {
-      toast.error(err.message);
+      toast.error((err as any).message);
     }
   }, []);
 
@@ -612,7 +612,7 @@ function BusinessOpsPage() {
                       setNewVideoUrl(url);
                       toast.dismiss(uploadToast);
                       toast.success("Video uploaded! Click 'Add' to activate.");
-                    } catch (err) {
+                    } catch (err: any) {
                       toast.dismiss(uploadToast);
                       toast.error(err.message || "Failed to upload video");
                     }

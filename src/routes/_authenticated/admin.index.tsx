@@ -362,7 +362,7 @@ function CustomerAnalyticsCards() {
         supabase.from("user_roles").select("account_status"),
         supabase.from("collections").select("id"),
         supabase.from("whatsapp_inquiries").select("id"),
-        supabase.from("email_campaigns").select("status"),
+        supabase.from("email_campaigns" as any).select("status"),
       ]);
       const total = profs?.length ?? 0;
       const google = (profs ?? []).filter((p: any) => p.email && /@gmail\./i.test(p.email)).length;
