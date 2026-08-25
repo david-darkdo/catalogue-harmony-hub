@@ -36,7 +36,7 @@ export function InstallPwaBanner() {
     // Register Service Worker
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker
-        .register("/sw.js")
+        .register("/sw.js", { scope: "/" })
         .then((reg) => {
           console.log("Enreach PWA Service Worker registered:", reg.scope);
         })

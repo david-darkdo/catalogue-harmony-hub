@@ -1,27 +1,52 @@
 {
   "name": "Enreach Concepts Showroom",
   "short_name": "Enreach",
-  "description": "Discover luxury building materials, tiles, doors, sanitaryware and custom architectural finishes.",
+  "description": "Luxury building materials showroom in Abuja - premium tiles, security doors, sanitaryware and architectural finishes.",
   "start_url": "/",
   "scope": "/",
-  "display": "standalone",
-  "orientation": "any",
-  "background_color": "#0f172a",
-  "theme_color": "#0f172a",
   "id": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#0f172a",
+  "prefer_related_applications": false,
   "categories": ["shopping", "business", "design"],
   "icons": [
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/logo.png",
