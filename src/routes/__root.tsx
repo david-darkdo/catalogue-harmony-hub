@@ -22,6 +22,7 @@ import appCss from "../styles.css?url";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
+import { InstallPwaBanner } from "@/components/InstallPwaBanner";
 
 function NotFoundComponent() {
   return (
@@ -99,7 +100,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     const meta = [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { name: "theme-color", content: "#2f5240" },
+      { name: "theme-color", content: "#0f172a" },
+      { name: "mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "Enreach" },
+      { name: "application-name", content: "Enreach Concepts Showroom" },
       { title: "Enreach Concepts — Luxury Building Materials Showroom" },
       {
         name: "description",
@@ -130,8 +136,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       links: [
         { rel: "stylesheet", href: appCss },
         { rel: "manifest", href: "/manifest.webmanifest" },
-        { rel: "apple-touch-icon", href: "/icon-512.png" },
-        { rel: "icon", href: "/icon-512.png", type: "image/png" },
+        { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png" },
+        { rel: "icon", sizes: "192x192", href: "/icon-192.png", type: "image/png" },
+        { rel: "icon", sizes: "512x512", href: "/icon-512.png", type: "image/png" },
+        { rel: "shortcut icon", href: "/icon-192.png" },
       ],
     };
   },
@@ -323,6 +331,9 @@ function RootAppWrapper() {
           </div>
         );
       })()}
+
+      {/* Global PWA Installation Prompt Banner */}
+      <InstallPwaBanner />
 
       <Outlet />
     </div>
