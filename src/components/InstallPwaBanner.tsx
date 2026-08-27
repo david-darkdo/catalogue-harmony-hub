@@ -31,7 +31,13 @@ export function InstallPwaBanner() {
       setDeferredPrompt(e);
     };
 
+    const handleShowBanner = () => {
+      setIsDismissed(false);
+      if (isIos) setShowIosInstructions(true);
+    };
+
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener("pwa:show-banner", handleShowBanner);
 
     // Register Service Worker
     if ("serviceWorker" in navigator) {
@@ -47,6 +53,7 @@ export function InstallPwaBanner() {
 
     return () => {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener("pwa:show-banner", handleShowBanner);
     };
   }, []);
 

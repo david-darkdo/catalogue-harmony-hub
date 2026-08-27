@@ -11,6 +11,7 @@ import {
   X,
   AlertCircle,
   Trash2,
+  Download,
   Truck,
   CreditCard,
   Headphones,
@@ -23,6 +24,7 @@ import { FloatingWhatsApp } from "./FloatingWhatsApp";
 import { syncOfflineActions, getUserCollectionItems, getGuestCollection, getCachedUserCollectionItems } from "@/lib/collection";
 import { toast } from "sonner";
 import { SiteFooter } from "./SiteFooter";
+import { usePwaInstall } from "@/lib/pwa";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [trustFeatures, setTrustFeatures] = useState<any[]>([]);
@@ -211,6 +213,15 @@ function TopBar() {
     navigate({ to: "/" });
   };
 
+  const { isStandalone, triggerInstall } = usePwaInstall();
+  const handleTopBarInstall = async () => {
+    const installed = await triggerInstall();
+    if (!installed) {
+      // Scroll to or trigger PWA install banner
+      window.dispatchEvent(new Event("pwa:show-banner"));
+    }
+  };
+
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur">
       <div className="container-app flex items-center gap-3 py-3">
@@ -218,7 +229,10 @@ function TopBar() {
           <img
             src="/logo.png"
             alt="Enreach Concepts Logo"
-            className="h-8 w-auto object-contain"
+            className="h-8 w-auto object-contain shrink-0"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = "/logo.png";
+            }}
           />
           <span className="hidden font-display text-base font-semibold tracking-tight sm:inline text-foreground">
             Enreach Concepts
@@ -242,6 +256,17 @@ function TopBar() {
           />
         </form>
         <div className="flex items-center gap-2">
+          {/* Install App Button (Visible when not running as standalone app) */}
+          {!isStandalone && (
+            <button
+              onClick={handleTopBarInstall}
+              title="Install Enreach Concepts App"
+              className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary border border-primary/20 hover:bg-primary hover:text-primary-foreground transition-all shadow-xs shrink-0"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Install App</span>
+            </button>
+          )}
           {/* Notification Bell */}
           {user && (
             <div className="relative">
