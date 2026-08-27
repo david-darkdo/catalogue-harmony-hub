@@ -4,7 +4,7 @@
   "cleanUrls": true,
   "headers": [
     {
-      "source": "/(manifest.webmanifest|sw.js|logo.png|icon-192.png|icon-512.png|icon-144.png|icon-96.png|apple-touch-icon.png|favicon.ico)",
+      "source": "/(manifest.json|manifest.webmanifest|sw.js|logo.png|icon-192.png|icon-512.png|icon-144.png|icon-96.png|apple-touch-icon.png|favicon.ico)",
       "headers": [
         {
           "key": "Access-Control-Allow-Origin",

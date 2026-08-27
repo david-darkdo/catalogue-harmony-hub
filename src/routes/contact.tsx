@@ -7,7 +7,7 @@ import { Facebook, Instagram, Mail, MapPin, MessageCircle, Phone } from "lucide-
 export const Route = createFileRoute("/contact")({
   head: () => ({
     meta: [
-      { title: "Contact — Stoneworks" },
+      { title: "Contact — Enreach Concepts" },
       { name: "description", content: "Get in touch with our showroom team. WhatsApp, email, and visit details." },
     ],
   }),

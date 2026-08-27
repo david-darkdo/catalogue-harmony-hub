@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { Search, Settings as SettingsIcon, Package, Users } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
-  head: () => ({ meta: [{ title: "Admin — Stoneworks" }] }),
+  head: () => ({ meta: [{ title: "Admin — Enreach Concepts" }] }),
   component: AdminPage,
 });
 

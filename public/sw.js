@@ -1,11 +1,13 @@
-const CACHE_NAME = 'enreach-concepts-v1';
+const CACHE_NAME = 'enreach-concepts-v2';
 const PRECACHE_ASSETS = [
   '/',
+  '/manifest.json',
   '/manifest.webmanifest',
   '/logo.png',
   '/icon-192.png',
   '/icon-512.png',
-  '/apple-touch-icon.png'
+  '/apple-touch-icon.png',
+  '/favicon.ico'
 ];
 
 // Install Event

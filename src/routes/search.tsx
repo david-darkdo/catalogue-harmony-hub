@@ -29,7 +29,7 @@ export const Route = createFileRoute("/search")({
   validateSearch: validateSearch,
   head: () => ({
     meta: [
-      { title: "Search — Stoneworks" },
+      { title: "Search — Enreach Concepts" },
       { name: "description", content: "Search across the catalogue." },
     ],
   }),

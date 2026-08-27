@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 export const Route = createFileRoute("/account")({
-  head: () => ({ meta: [{ title: "Account — Stoneworks" }] }),
+  head: () => ({ meta: [{ title: "Account — Enreach Concepts" }] }),
   component: AccountPage,
 });
 

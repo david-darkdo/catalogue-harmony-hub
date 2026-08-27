@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { Settings as SettingsIcon, ShieldAlert } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/settings")({
-  head: () => ({ meta: [{ title: "Company Settings — Stoneworks" }] }),
+  head: () => ({ meta: [{ title: "Company Settings — Enreach Concepts" }] }),
   component: SettingsPage,
 });
 

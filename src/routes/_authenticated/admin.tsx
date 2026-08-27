@@ -7,7 +7,7 @@ import { Search, LayoutDashboard, Briefcase, Package, Layers, Users, FolderHeart
 import { useEffect } from "react";
 
 export const Route = createFileRoute("/_authenticated/admin")({
-  head: () => ({ meta: [{ title: "Admin — Stoneworks" }] }),
+  head: () => ({ meta: [{ title: "Admin — Enreach Concepts" }] }),
   component: AdminLayout,
 });
 

@@ -229,7 +229,10 @@ function TopBar() {
           <img
             src="/logo.png"
             alt="Enreach Concepts Logo"
-            className="h-8 w-auto object-contain shrink-0"
+            width={32}
+            height={32}
+            loading="eager"
+            className="h-8 w-8 object-contain shrink-0 rounded-md"
             onError={(e) => {
               (e.currentTarget as HTMLImageElement).src = "/logo.png";
             }}

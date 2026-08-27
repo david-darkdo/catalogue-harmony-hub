@@ -8,7 +8,7 @@ export function SiteFooter() {
     <footer className="mt-16 border-t border-border bg-surface">
       <div className="container-app grid gap-8 py-10 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <div className="font-display text-lg font-semibold">Stoneworks</div>
+          <div className="font-display text-lg font-semibold">{s?.company_name || "Enreach Concepts Showroom"}</div>
           <p className="mt-2 text-sm text-muted-foreground">
             Curated building materials for serious projects.
           </p>
@@ -46,7 +46,7 @@ export function SiteFooter() {
         </div>
       </div>
       <div className="border-t border-border py-4 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} Stoneworks. All rights reserved.
+        © {new Date().getFullYear()} {s?.company_name || "Enreach Concepts Showroom"}. All rights reserved.
       </div>
     </footer>
   );
