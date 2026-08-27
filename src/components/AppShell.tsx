@@ -234,7 +234,11 @@ function TopBar() {
             loading="eager"
             className="h-8 w-8 object-contain shrink-0 rounded-md"
             onError={(e) => {
-              (e.currentTarget as HTMLImageElement).src = "/logo.png";
+              const target = e.currentTarget as HTMLImageElement;
+              if (!target.dataset.failed) {
+                target.dataset.failed = "true";
+                target.src = "/icon-192.png";
+              }
             }}
           />
           <span className="hidden font-display text-base font-semibold tracking-tight sm:inline text-foreground">

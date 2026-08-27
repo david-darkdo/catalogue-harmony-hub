@@ -1,4 +1,4 @@
-const CACHE_NAME = 'enreach-concepts-v2';
+const CACHE_NAME = 'enreach-concepts-v3';
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.json',
@@ -6,6 +6,8 @@ const PRECACHE_ASSETS = [
   '/logo.png',
   '/icon-192.png',
   '/icon-512.png',
+  '/icon-144.png',
+  '/icon-96.png',
   '/apple-touch-icon.png',
   '/favicon.ico'
 ];
@@ -36,19 +38,16 @@ self.addEventListener('activate', (event) => {
 
 // Fetch Event (Network first, fallback to cache)
 self.addEventListener('fetch', (event) => {
-  // Only handle GET requests
   if (event.request.method !== 'GET') return;
   
-  // Exclude API / Supabase / Auth requests from SW interception to ensure live data
   const url = new URL(event.request.url);
   if (url.hostname.includes('supabase.co') || url.pathname.startsWith('/api')) {
     return;
   }
 
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { redirect: "follow" })
       .then((networkResponse) => {
-        // Cache successful responses for static assets
         if (
           networkResponse &&
           networkResponse.status === 200 &&
@@ -57,6 +56,9 @@ self.addEventListener('fetch', (event) => {
            url.pathname.endsWith('.png') ||
            url.pathname.endsWith('.jpg') ||
            url.pathname.endsWith('.svg') ||
+           url.pathname.endsWith('.ico') ||
+           url.pathname.endsWith('.json') ||
+           url.pathname.endsWith('.webmanifest') ||
            url.pathname.endsWith('.woff2'))
         ) {
           const responseToCache = networkResponse.clone();
@@ -67,7 +69,6 @@ self.addEventListener('fetch', (event) => {
         return networkResponse;
       })
       .catch(() => {
-        // If network fails, return cached version or fallback
         return caches.match(event.request).then((cachedResponse) => {
           if (cachedResponse) {
             return cachedResponse;
@@ -75,7 +76,10 @@ self.addEventListener('fetch', (event) => {
           if (event.request.mode === 'navigate') {
             return caches.match('/');
           }
-          return new Response('Offline', { status: 503, statusText: 'Offline' });
+          return caches.match('/logo.png').then((logoCache) => {
+            if (url.pathname.endsWith('.png') && logoCache) return logoCache;
+            return new Response('Offline', { status: 503, statusText: 'Offline' });
+          });
         });
       })
   );

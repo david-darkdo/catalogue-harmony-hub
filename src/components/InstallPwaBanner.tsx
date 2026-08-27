@@ -84,9 +84,15 @@ export function InstallPwaBanner() {
             <img
               src="/logo.png"
               alt="Enreach Concepts Logo"
-              className="h-10 w-10 object-contain"
+              width={40}
+              height={40}
+              className="h-10 w-10 object-contain rounded-md"
               onError={(e) => {
-                (e.currentTarget as HTMLImageElement).src = "/logo.png";
+                const target = e.currentTarget as HTMLImageElement;
+                if (!target.dataset.failed) {
+                  target.dataset.failed = "true";
+                  target.src = "/icon-192.png";
+                }
               }}
             />
           </div>

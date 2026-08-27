@@ -8,6 +8,11 @@ if (typeof window !== "undefined") {
     globalDeferredPrompt = e;
     window.dispatchEvent(new CustomEvent("pwa:installable"));
   });
+
+  window.addEventListener("appinstalled", () => {
+    globalDeferredPrompt = null;
+    window.dispatchEvent(new CustomEvent("pwa:installed"));
+  });
 }
 
 export function usePwaInstall() {
@@ -22,18 +27,32 @@ export function usePwaInstall() {
     setIsStandalone(isStandaloneMode);
 
     const handleInstallable = () => setCanInstall(true);
+    const handleInstalled = () => {
+      setCanInstall(false);
+      setIsStandalone(true);
+    };
+
     window.addEventListener("pwa:installable", handleInstallable);
-    return () => window.removeEventListener("pwa:installable", handleInstallable);
+    window.addEventListener("pwa:installed", handleInstalled);
+
+    return () => {
+      window.removeEventListener("pwa:installable", handleInstallable);
+      window.removeEventListener("pwa:installed", handleInstalled);
+    };
   }, []);
 
   const triggerInstall = async () => {
     if (globalDeferredPrompt) {
-      globalDeferredPrompt.prompt();
-      const { outcome } = await globalDeferredPrompt.userChoice;
-      console.log(`User response to the install prompt: ${outcome}`);
-      globalDeferredPrompt = null;
-      setCanInstall(false);
-      return true;
+      try {
+        globalDeferredPrompt.prompt();
+        const choice = await globalDeferredPrompt.userChoice;
+        console.log("PWA user choice:", choice?.outcome);
+        globalDeferredPrompt = null;
+        setCanInstall(false);
+        return true;
+      } catch (err) {
+        console.warn("PWA install error:", err);
+      }
     }
     return false;
   };
