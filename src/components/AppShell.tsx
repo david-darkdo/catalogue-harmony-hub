@@ -227,19 +227,12 @@ function TopBar() {
       <div className="container-app flex items-center gap-3 py-3">
         <Link to="/" className="flex items-center gap-2">
           <img
-            src="/logo.png"
-            alt="Enreach Concepts Logo"
+            src="/brand/logo.png"
+            alt="Enreach Concepts"
             width={32}
             height={32}
             loading="eager"
-            className="h-8 w-8 object-contain shrink-0 rounded-md"
-            onError={(e) => {
-              const target = e.currentTarget as HTMLImageElement;
-              if (!target.dataset.failed) {
-                target.dataset.failed = "true";
-                target.src = "/icon-192.png";
-              }
-            }}
+            className="h-8 w-8 object-contain shrink-0 rounded-md bg-black"
           />
           <span className="hidden font-display text-base font-semibold tracking-tight sm:inline text-foreground">
             Enreach Concepts

@@ -82,18 +82,11 @@ export function InstallPwaBanner() {
         <div className="flex items-start gap-3">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted p-1 border border-border">
             <img
-              src="/logo.png"
-              alt="Enreach Concepts Logo"
+              src="/brand/logo.png"
+              alt="Enreach Concepts"
               width={40}
               height={40}
-              className="h-10 w-10 object-contain rounded-md"
-              onError={(e) => {
-                const target = e.currentTarget as HTMLImageElement;
-                if (!target.dataset.failed) {
-                  target.dataset.failed = "true";
-                  target.src = "/icon-192.png";
-                }
-              }}
+              className="h-10 w-10 object-contain rounded-md bg-black"
             />
           </div>
 

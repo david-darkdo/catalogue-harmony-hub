@@ -156,8 +156,8 @@ function RootShell({ children }: { children: ReactNode }) {
     "@context": "https://schema.org",
     "@type": "Organization",
     "name": "Enreach Concepts",
-    "url": "https://showroom.enreach.concepts",
-    "logo": "https://showroom.enreach.concepts/logo.png",
+    "url": "https://www.deenreachconcept.com.ng",
+    "logo": "https://www.deenreachconcept.com.ng/brand/logo.png",
     "description": "Luxury building materials showroom in Abuja specializing in premium tiles, armored security doors, sanitaryware, and architectural finishes.",
     "address": {
       "@type": "PostalAddress",
@@ -170,7 +170,7 @@ function RootShell({ children }: { children: ReactNode }) {
     "@context": "https://schema.org",
     "@type": "WebSite",
     "name": "Enreach Concepts Digital Showroom",
-    "url": "https://showroom.enreach.concepts",
+    "url": "https://www.deenreachconcept.com.ng",
     "potentialAction": {
       "@type": "SearchAction",
       "target": "https://showroom.enreach.concepts/search?q={search_term_string}",
