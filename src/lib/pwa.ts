@@ -15,8 +15,13 @@ if (typeof window !== "undefined") {
   });
 }
 
+function getPrompt(): any {
+  if (typeof window === "undefined") return null;
+  return (window as any).__pwa_deferred_prompt || globalDeferredPrompt;
+}
+
 export function usePwaInstall() {
-  const [canInstall, setCanInstall] = useState(!!globalDeferredPrompt);
+  const [canInstall, setCanInstall] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
@@ -25,6 +30,7 @@ export function usePwaInstall() {
       (window.navigator as any).standalone === true;
 
     setIsStandalone(isStandaloneMode);
+    setCanInstall(!!getPrompt());
 
     const handleInstallable = () => setCanInstall(true);
     const handleInstalled = () => {
@@ -42,12 +48,16 @@ export function usePwaInstall() {
   }, []);
 
   const triggerInstall = async () => {
-    if (globalDeferredPrompt) {
+    const promptObj = getPrompt();
+    if (promptObj) {
       try {
-        globalDeferredPrompt.prompt();
-        const choice = await globalDeferredPrompt.userChoice;
+        promptObj.prompt();
+        const choice = await promptObj.userChoice;
         console.log("PWA user choice:", choice?.outcome);
         globalDeferredPrompt = null;
+        if (typeof window !== "undefined") {
+          (window as any).__pwa_deferred_prompt = null;
+        }
         setCanInstall(false);
         return true;
       } catch (err) {

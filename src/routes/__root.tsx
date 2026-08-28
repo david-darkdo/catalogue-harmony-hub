@@ -136,8 +136,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       links: [
         { rel: "stylesheet", href: appCss },
         { rel: "manifest", href: "/manifest.json" },
-        { rel: "manifest", href: "/manifest.webmanifest" },
-        { rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
+        { rel: "icon", type: "image/png", href: "/icon-192.png" },
         { rel: "shortcut icon", href: "/favicon.ico" },
         { rel: "apple-touch-icon", sizes: "180x180", href: "/apple-touch-icon.png" },
         { rel: "icon", sizes: "192x192", href: "/icon-192.png", type: "image/png" },
@@ -182,6 +181,24 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.__pwa_deferred_prompt = null;
+              window.addEventListener('beforeinstallprompt', function(e) {
+                e.preventDefault();
+                window.__pwa_deferred_prompt = e;
+                window.dispatchEvent(new CustomEvent('pwa:installable'));
+                console.log('PWA: beforeinstallprompt event captured');
+              });
+              window.addEventListener('appinstalled', function() {
+                window.__pwa_deferred_prompt = null;
+                window.dispatchEvent(new CustomEvent('pwa:installed'));
+                console.log('PWA: App successfully installed');
+              });
+            `
+          }}
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
