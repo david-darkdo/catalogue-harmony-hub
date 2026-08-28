@@ -1,4 +1,4 @@
-const CACHE_NAME = 'enreach-concepts-v5';
+const CACHE_NAME = 'enreach-concepts-v6';
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.json',
@@ -41,7 +41,7 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   
   const url = new URL(event.request.url);
-  if (url.hostname.includes('supabase.co') || url.pathname.startsWith('/api')) {
+  if (url.hostname.includes('supabase.co') || url.pathname.startsWith('/api') || url.pathname.startsWith('/brand/')) {
     return;
   }
 
