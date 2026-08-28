@@ -334,7 +334,7 @@ function RootAppWrapper() {
             `}</style>
             <div className="flex flex-col items-center gap-4 animate-breathing">
               <img
-                src="/logo.png"
+                src="/logo.png?v=9"
                 alt="Enreach Concepts Logo"
                 className="h-16 w-auto object-contain"
               />

@@ -10,7 +10,7 @@ export function SiteFooter() {
         <div>
           <div className="flex items-center gap-2 mb-2">
             <img
-              src="/logo.png"
+              src="/logo.png?v=9"
               alt="Enreach Concepts"
               width={28}
               height={28}

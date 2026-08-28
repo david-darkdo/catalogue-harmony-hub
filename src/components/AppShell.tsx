@@ -216,9 +216,16 @@ function TopBar() {
   const { isStandalone, triggerInstall } = usePwaInstall();
   const handleTopBarInstall = async () => {
     const installed = await triggerInstall();
-    if (!installed) {
-      // Scroll to or trigger PWA install banner
+    if (installed) {
+      toast.success("Opening installation dialog...");
+    } else {
       window.dispatchEvent(new Event("pwa:show-banner"));
+      const isIos = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
+      if (isIos) {
+        toast.info("To install on iOS: Tap Share ⎋ and select 'Add to Home Screen'");
+      } else {
+        toast.info("To install: Tap your browser menu ⋮ and select 'Install app'");
+      }
     }
   };
 
@@ -227,7 +234,7 @@ function TopBar() {
       <div className="container-app flex items-center gap-3 py-3">
         <Link to="/" className="flex items-center gap-2">
           <img
-            src="/logo.png"
+            src="/logo.png?v=9"
             alt="Enreach Concepts"
             width={32}
             height={32}
@@ -264,7 +271,7 @@ function TopBar() {
               className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary border border-primary/20 hover:bg-primary hover:text-primary-foreground transition-all shadow-xs shrink-0"
             >
               <Download className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Install App</span>
+              <span className="text-xs font-semibold">Install</span>
             </button>
           )}
           {/* Notification Bell */}
