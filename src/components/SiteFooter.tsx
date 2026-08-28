@@ -8,7 +8,17 @@ export function SiteFooter() {
     <footer className="mt-16 border-t border-border bg-surface">
       <div className="container-app grid gap-8 py-10 sm:grid-cols-2 lg:grid-cols-4">
         <div>
-          <div className="font-display text-lg font-semibold">{s?.company_name || "Enreach Concepts Showroom"}</div>
+          <div className="flex items-center gap-2 mb-2">
+            <img
+              src="/logo.png"
+              alt="Enreach Concepts"
+              width={28}
+              height={28}
+              loading="lazy"
+              className="h-7 w-7 object-contain rounded-md bg-black"
+            />
+            <span className="font-display text-lg font-semibold">{s?.company_name || "Enreach Concepts Showroom"}</span>
+          </div>
           <p className="mt-2 text-sm text-muted-foreground">
             Curated building materials for serious projects.
           </p>

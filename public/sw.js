@@ -1,4 +1,4 @@
-const CACHE_NAME = 'enreach-concepts-v6';
+const CACHE_NAME = 'enreach-concepts-v7';
 const PRECACHE_ASSETS = [
   '/',
   '/manifest.json',

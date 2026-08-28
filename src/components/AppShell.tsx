@@ -227,7 +227,7 @@ function TopBar() {
       <div className="container-app flex items-center gap-3 py-3">
         <Link to="/" className="flex items-center gap-2">
           <img
-            src="/brand/logo.png"
+            src="/logo.png"
             alt="Enreach Concepts"
             width={32}
             height={32}

@@ -82,7 +82,7 @@ export function InstallPwaBanner() {
         <div className="flex items-start gap-3">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted p-1 border border-border">
             <img
-              src="/brand/logo.png"
+              src="/logo.png"
               alt="Enreach Concepts"
               width={40}
               height={40}

@@ -157,7 +157,7 @@ function RootShell({ children }: { children: ReactNode }) {
     "@type": "Organization",
     "name": "Enreach Concepts",
     "url": "https://www.deenreachconcept.com.ng",
-    "logo": "https://www.deenreachconcept.com.ng/brand/logo.png",
+    "logo": "https://www.deenreachconcept.com.ng/logo.png",
     "description": "Luxury building materials showroom in Abuja specializing in premium tiles, armored security doors, sanitaryware, and architectural finishes.",
     "address": {
       "@type": "PostalAddress",
