@@ -221,6 +221,18 @@ function RootAppWrapper() {
 
   useEffect(() => {
     setInitialLoading(false);
+
+    // Unconditional root-level Service Worker registration for PWA installability
+    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/sw.js", { scope: "/" })
+        .then((reg) => {
+          console.log("Enreach PWA Service Worker registered:", reg.scope);
+        })
+        .catch((err) => {
+          console.warn("Service Worker registration failed:", err);
+        });
+    }
   }, []);
 
   useEffect(() => {

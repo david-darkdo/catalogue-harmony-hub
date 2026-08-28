@@ -232,7 +232,7 @@ function TopBar() {
             width={32}
             height={32}
             loading="eager"
-            className="h-8 w-8 object-contain shrink-0 rounded-md bg-black"
+            className="h-8 w-8 object-contain shrink-0"
           />
           <span className="hidden font-display text-base font-semibold tracking-tight sm:inline text-foreground">
             Enreach Concepts

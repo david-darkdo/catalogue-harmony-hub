@@ -15,7 +15,7 @@ export function SiteFooter() {
               width={28}
               height={28}
               loading="lazy"
-              className="h-7 w-7 object-contain rounded-md bg-black"
+              className="h-7 w-7 object-contain shrink-0"
             />
             <span className="font-display text-lg font-semibold">{s?.company_name || "Enreach Concepts Showroom"}</span>
           </div>
