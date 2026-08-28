@@ -1,23 +1,34 @@
 import { useState, useEffect } from "react";
 
-let globalDeferredPrompt: any = null;
+declare global {
+  interface Window {
+    __pwa_prompt?: any;
+  }
+}
 
+// Immediate early capture of beforeinstallprompt on window
 if (typeof window !== "undefined") {
-  window.addEventListener("beforeinstallprompt", (e) => {
+  window.addEventListener("beforeinstallprompt", (e: any) => {
     e.preventDefault();
-    globalDeferredPrompt = e;
-    window.dispatchEvent(new CustomEvent("pwa:installable"));
+    window.__pwa_prompt = e;
+    window.dispatchEvent(new CustomEvent("pwa:ready"));
+    console.log("PWA: captured beforeinstallprompt");
   });
 
   window.addEventListener("appinstalled", () => {
-    globalDeferredPrompt = null;
+    window.__pwa_prompt = null;
     window.dispatchEvent(new CustomEvent("pwa:installed"));
+    console.log("PWA: appinstalled event fired");
   });
-}
 
-function getPrompt(): any {
-  if (typeof window === "undefined") return null;
-  return (window as any).__pwa_deferred_prompt || globalDeferredPrompt;
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker
+        .register("/sw.js", { scope: "/" })
+        .then((reg) => console.log("PWA: Service Worker active:", reg.scope))
+        .catch((err) => console.warn("PWA: SW registration error:", err));
+    });
+  }
 }
 
 export function usePwaInstall() {
@@ -25,41 +36,47 @@ export function usePwaInstall() {
   const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
-    const isStandaloneMode =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as any).standalone === true;
+    const checkStandalone = () => {
+      const standalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        (window.navigator as any).standalone === true ||
+        document.referrer.includes("android-app://");
+      setIsStandalone(standalone);
+    };
 
-    setIsStandalone(isStandaloneMode);
-    setCanInstall(!!getPrompt());
+    checkStandalone();
+    setCanInstall(!!window.__pwa_prompt);
 
-    const handleInstallable = () => setCanInstall(true);
+    const handleReady = () => {
+      setCanInstall(true);
+    };
+
     const handleInstalled = () => {
       setCanInstall(false);
       setIsStandalone(true);
     };
 
-    window.addEventListener("pwa:installable", handleInstallable);
+    window.addEventListener("pwa:ready", handleReady);
     window.addEventListener("pwa:installed", handleInstalled);
 
     return () => {
-      window.removeEventListener("pwa:installable", handleInstallable);
+      window.removeEventListener("pwa:ready", handleReady);
       window.removeEventListener("pwa:installed", handleInstalled);
     };
   }, []);
 
-  const triggerInstall = async () => {
-    const promptObj = getPrompt();
-    if (promptObj) {
+  const triggerInstall = async (): Promise<boolean> => {
+    const prompt = window.__pwa_prompt;
+    if (prompt) {
       try {
-        promptObj.prompt();
-        const choice = await promptObj.userChoice;
-        console.log("PWA user choice:", choice?.outcome);
-        globalDeferredPrompt = null;
-        if (typeof window !== "undefined") {
-          (window as any).__pwa_deferred_prompt = null;
+        prompt.prompt();
+        const { outcome } = await prompt.userChoice;
+        console.log("PWA install outcome:", outcome);
+        if (outcome === "accepted") {
+          window.__pwa_prompt = null;
+          setCanInstall(false);
+          return true;
         }
-        setCanInstall(false);
-        return true;
       } catch (err) {
         console.warn("PWA install error:", err);
       }

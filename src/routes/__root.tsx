@@ -184,15 +184,15 @@ function RootShell({ children }: { children: ReactNode }) {
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              window.__pwa_deferred_prompt = null;
+              window.__pwa_prompt = null;
               window.addEventListener('beforeinstallprompt', function(e) {
                 e.preventDefault();
-                window.__pwa_deferred_prompt = e;
-                window.dispatchEvent(new CustomEvent('pwa:installable'));
+                window.__pwa_prompt = e;
+                window.dispatchEvent(new CustomEvent('pwa:ready'));
                 console.log('PWA: beforeinstallprompt event captured');
               });
               window.addEventListener('appinstalled', function() {
-                window.__pwa_deferred_prompt = null;
+                window.__pwa_prompt = null;
                 window.dispatchEvent(new CustomEvent('pwa:installed'));
                 console.log('PWA: App successfully installed');
               });
@@ -238,18 +238,6 @@ function RootAppWrapper() {
 
   useEffect(() => {
     setInitialLoading(false);
-
-    // Unconditional root-level Service Worker registration for PWA installability
-    if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("/sw.js", { scope: "/" })
-        .then((reg) => {
-          console.log("Enreach PWA Service Worker registered:", reg.scope);
-        })
-        .catch((err) => {
-          console.warn("Service Worker registration failed:", err);
-        });
-    }
   }, []);
 
   useEffect(() => {

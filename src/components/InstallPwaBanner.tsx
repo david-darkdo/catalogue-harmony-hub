@@ -1,68 +1,35 @@
 import { useEffect, useState } from "react";
 import { Download, X, Share } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { usePwaInstall } from "@/lib/pwa";
 
 export function InstallPwaBanner() {
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [isStandalone, setIsStandalone] = useState(false);
+  const { canInstall, isStandalone, triggerInstall } = usePwaInstall();
   const [isDismissed, setIsDismissed] = useState(false);
   const [isIos, setIsIos] = useState(false);
   const [showIosInstructions, setShowIosInstructions] = useState(false);
 
   useEffect(() => {
-    // Check if already running in standalone PWA mode
-    const isStandaloneMode =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as any).standalone === true;
+    if (typeof window !== "undefined") {
+      const userAgent = window.navigator.userAgent.toLowerCase();
+      const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
+      setIsIos(isIosDevice);
 
-    if (isStandaloneMode) {
-      setIsStandalone(true);
-      return;
+      const handleShowBanner = () => {
+        setIsDismissed(false);
+        if (isIosDevice) setShowIosInstructions(true);
+      };
+
+      window.addEventListener("pwa:show-banner", handleShowBanner);
+      return () => {
+        window.removeEventListener("pwa:show-banner", handleShowBanner);
+      };
     }
-
-    // Check if iOS device
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    const isIosDevice = /iphone|ipad|ipod/.test(userAgent);
-    setIsIos(isIosDevice);
-
-    // Listen for beforeinstallprompt event (Android / Chrome / Edge / Desktop)
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-
-    const handleShowBanner = () => {
-      setIsDismissed(false);
-      if (isIos) setShowIosInstructions(true);
-    };
-
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-    window.addEventListener("pwa:show-banner", handleShowBanner);
-
-    // Register Service Worker
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("/sw.js", { scope: "/" })
-        .then((reg) => {
-          console.log("Enreach PWA Service Worker registered:", reg.scope);
-        })
-        .catch((err) => {
-          console.warn("Service Worker registration failed:", err);
-        });
-    }
-
-    return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-      window.removeEventListener("pwa:show-banner", handleShowBanner);
-    };
   }, []);
 
   const handleInstallClick = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      console.log(`User PWA install outcome: ${outcome}`);
-      setDeferredPrompt(null);
+    if (canInstall) {
+      await triggerInstall();
     } else if (isIos) {
       setShowIosInstructions(true);
     }
@@ -74,7 +41,7 @@ export function InstallPwaBanner() {
   };
 
   if (isStandalone || isDismissed) return null;
-  if (!deferredPrompt && !isIos) return null;
+  if (!canInstall && !isIos) return null;
 
   return (
     <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 z-[9999] max-w-md animate-in fade-in slide-in-from-bottom-5 duration-300">
@@ -82,7 +49,7 @@ export function InstallPwaBanner() {
         <div className="flex items-start gap-3">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted p-1 border border-border">
             <img
-              src="/logo.png"
+              src="/logo.png?v=10"
               alt="Enreach Concepts"
               width={40}
               height={40}
@@ -105,7 +72,7 @@ export function InstallPwaBanner() {
             </div>
 
             <p className="mt-1 text-xs text-muted-foreground leading-relaxed">
-              Install <strong>Enreach Concepts Showroom</strong> on your home screen or desktop for fast, offline access.
+              Install <strong>Enreach Concepts Showroom</strong> as a fast, full-screen application on your phone or desktop.
             </p>
 
             {showIosInstructions && (
